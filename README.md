@@ -43,6 +43,7 @@ nano /etc/studip-sync.conf.d/courses.conf
 
 ## Verwendung
 ### Manuelle Synchronisation
+Der übergebene Pfad **muss** ein absoluter Pfad sein (beginnend mit `/`).
 ```shell
 studip-sync /path/to/sync/dir
 ```
