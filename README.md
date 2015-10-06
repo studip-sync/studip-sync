@@ -11,7 +11,7 @@ Abhängigkeiten installieren
 # Ubuntu/Debian
 sudo apt-get install curl p7zip-full rsync
 
-# OpenSuse
+# OpenSUSE
 sudo zypper in curl p7zip rsync
 
 # Arch Linux
@@ -41,7 +41,7 @@ Veranstaltungen und Links zu deren Hauptordnern eintragen
 nano /etc/studip-sync.conf.d/courses.conf
 ```
 
-## Usage
+## Verwendung
 ### Manuelle Synchronisation
 ```shell
 studip-sync /path/to/sync/dir
