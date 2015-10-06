@@ -1,0 +1,59 @@
+#!/bin/bash
+
+############
+# Settings #
+############
+
+CONFIG_DIR="/etc/studip-sync.conf.d"
+USER_CONF_FILE="${CONFIG_DIR}/user.conf"
+COURSES_CONF_File="${CONFIG_DIR}/courses.conf"
+
+#############################################################################
+
+if [[ ! -d $1 ]]; then
+    echo "Usage: $0 /path/to/studip/sync/dir"
+    exit 1;
+fi
+
+workdir="/tmp/studip-sync/workdir"
+start_dir=$PWD
+sync_dir=$1
+zipfile_name="$(head -c16 /dev/urandom | md5sum | cut -d' ' -f1)_st_ip.zip"
+
+mkdir -p ${workdir}
+cd ${workdir}
+
+source ${USER_CONF_FILE}
+curl -sLo tmp.html --cookie-jar cookies.txt "HTTPS://studip.uni-passau.de/studip/index.php?again=yes&sso=shib"
+curl -sLo SAMLResponse --cookie-jar cookies.txt --cookie cookies.txt --data "j_username=${loginname}&j_password=${password}" "HTTPS://sso.uni-passau.de/idp/Authn/UserPassword"
+
+RelayState=$(grep --text RelayState SAMLResponse | grep -Po 'value=".*?"' | cut -d\" -f2 | recode html..latin1 | sed 's/:/%3A/g')
+SAMLResponse=$(grep --text SAMLResponse SAMLResponse | grep -Po 'value=".*?"' | cut -d\" -f2 | recode html..latin1 | sed -e 's/=/%3D/g' -e 's/+/%2B/g')
+
+curl -sLo tmp.html --cookie-jar cookies.txt --cookie cookies.txt --data "RelayState=${RelayState}&SAMLResponse=${SAMLResponse}" "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
+
+curl_flags=""
+while read line; do
+    if ! (echo $line | grep -qE "#|^$|^[[:blank:]]*$"); then
+        course_name="$(echo ${line} | grep -Po "^.*?\ " | sed 's/\ $//')"
+        url="$(echo ${line} | grep -o "https://.*$")"
+        curl_flags="${curl_flags} -o ${course_name}/${zipfile_name} ${url}"
+        mkdir ${course_name}
+    fi
+done < <(cat ${COURSES_CONF_File})
+
+curl -sL --cookie cookies.txt ${curl_flags}
+
+rm cookies.txt tmp.html SAMLResponse
+
+for d in *; do
+    if [[ -d $d ]]; then
+        7z x -bd -y -o$d $d/${zipfile_name} > /dev/null
+        rm $d/${zipfile_name}
+    fi
+done
+
+rsync -rc --del . ${sync_dir}
+
+cd "${start_dir}"
+rm -r ${workdir}
