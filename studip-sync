@@ -53,7 +53,7 @@ for d in *; do
     fi
 done
 
-rsync -rc --del . ${sync_dir}
+rsync -rc -b --suffix="_$(date +%d.%m.%Y_%H:%M:%S).old" . ${sync_dir}
 
 cd "${start_dir}"
 rm -r ${workdir}
