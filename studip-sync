@@ -10,6 +10,16 @@ COURSES_CONF_File="${CONFIG_DIR}/courses.conf"
 
 #############################################################################
 
+: ${DEBUG=0}
+
+if [[ $DEBUG == 0 ]]; then
+    CURL_DBG_FLAG="-s"
+    RSYNC_DBG_FLAG=""
+elif [[ $DEBUG == 1 ]]; then
+    RSYNC_DBG_FLAG="-v"
+    CURL_DBG_FLAG=""
+fi
+
 if [[ ! -d $1 ]]; then
     echo "Usage: $0 /path/to/studip/sync/dir"
     exit 1;
@@ -24,13 +34,13 @@ mkdir -p ${workdir}
 cd ${workdir}
 
 source ${USER_CONF_FILE}
-curl -sLo tmp.html --cookie-jar cookies.txt "HTTPS://studip.uni-passau.de/studip/index.php?again=yes&sso=shib"
-curl -sLo SAMLResponse --cookie-jar cookies.txt --cookie cookies.txt --data "j_username=${loginname}&j_password=${password}" "HTTPS://sso.uni-passau.de/idp/Authn/UserPassword"
+curl $CURL_DBG_FLAG -Lo tmp.html --cookie-jar cookies.txt "HTTPS://studip.uni-passau.de/studip/index.php?again=yes&sso=shib"
+curl $CURL_DBG_FLAG -Lo SAMLResponse --cookie-jar cookies.txt --cookie cookies.txt --data "j_username=${loginname}&j_password=${password}" "HTTPS://sso.uni-passau.de/idp/Authn/UserPassword"
 
 RelayState=$(grep --text RelayState SAMLResponse | grep -Po 'value=".*?"' | cut -d\" -f2 | recode html..latin1 | sed 's/:/%3A/g')
 SAMLResponse=$(grep --text SAMLResponse SAMLResponse | grep -Po 'value=".*?"' | cut -d\" -f2 | recode html..latin1 | sed -e 's/=/%3D/g' -e 's/+/%2B/g')
 
-curl -sLo tmp.html --cookie-jar cookies.txt --cookie cookies.txt --data "RelayState=${RelayState}&SAMLResponse=${SAMLResponse}" "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
+curl $CURL_DBG_FLAG -Lo tmp.html --cookie-jar cookies.txt --cookie cookies.txt --data "RelayState=${RelayState}&SAMLResponse=${SAMLResponse}" "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
 
 curl_flags=""
 while read line; do
@@ -42,7 +52,7 @@ while read line; do
     fi
 done < <(cat ${COURSES_CONF_File})
 
-curl -sL --cookie cookies.txt ${curl_flags}
+curl $CURL_DBG_FLAG -L --cookie cookies.txt ${curl_flags}
 
 rm cookies.txt tmp.html SAMLResponse
 
@@ -53,7 +63,7 @@ for d in *; do
     fi
 done
 
-rsync -rc -b --suffix="_$(date +%d.%m.%Y_%H+%M+%S).old" . ${sync_dir}
+rsync $RSYNC_DBG_FLAG -rc -b --suffix="_$(date +%d.%m.%Y_%H+%M+%S).old" . ${sync_dir}
 
 cd "${start_dir}"
 rm -r ${workdir}
