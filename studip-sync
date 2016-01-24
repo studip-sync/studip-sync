@@ -34,21 +34,48 @@ mkdir -p ${workdir}
 cd ${workdir}
 
 source ${USER_CONF_FILE}
-curl $CURL_DBG_FLAG -Lo tmp.html --cookie-jar cookies.txt "HTTPS://studip.uni-passau.de/studip/index.php?again=yes&sso=shib"
-curl $CURL_DBG_FLAG -Lo SAMLResponse --cookie-jar cookies.txt --cookie cookies.txt --data "j_username=${loginname}&j_password=${password}" "HTTPS://sso.uni-passau.de/idp/Authn/UserPassword"
 
-RelayState=$(grep --text RelayState SAMLResponse | grep -Po 'value=".*?"' | cut -d\" -f2 | recode html..latin1 | sed 's/:/%3A/g')
-SAMLResponse=$(grep --text SAMLResponse SAMLResponse | grep -Po 'value=".*?"' | cut -d\" -f2 | recode html..latin1 | sed -e 's/=/%3D/g' -e 's/+/%2B/g')
+curl $CURL_DBG_FLAG \
+    -Lo tmp.html \
+    --cookie-jar cookies.txt \
+    "HTTPS://studip.uni-passau.de/studip/index.php?again=yes&sso=shib"
 
-curl $CURL_DBG_FLAG -Lo tmp.html --cookie-jar cookies.txt --cookie cookies.txt --data "RelayState=${RelayState}&SAMLResponse=${SAMLResponse}" "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
+curl $CURL_DBG_FLAG \
+    -Lo SAMLResponse \
+    --cookie-jar cookies.txt \
+    --cookie cookies.txt \
+    --data "j_username=${loginname}&j_password=${password}" \
+    "HTTPS://sso.uni-passau.de/idp/Authn/UserPassword"
+
+RelayState=$(grep --text RelayState SAMLResponse \
+    | grep -Po 'value=".*?"' \
+    | cut -d\" -f2 \
+    | recode html..latin1 \
+    | sed 's/:/%3A/g')
+
+SAMLResponse=$(grep --text SAMLResponse SAMLResponse \
+    | grep -Po 'value=".*?"' \
+    | cut -d\" -f2 \
+    | recode html..latin1 \
+    | sed -e 's/=/%3D/g' -e 's/+/%2B/g')
+
+curl $CURL_DBG_FLAG \
+    -Lo tmp.html \
+    --cookie-jar cookies.txt \
+    --cookie cookies.txt \
+    --data "RelayState=${RelayState}&SAMLResponse=${SAMLResponse}"\
+    "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
 
 curl_flags=""
+zip_files=( )
 while read line; do
     if ! (echo $line | grep -qE "#|^$|^[[:blank:]]*$"); then
         course_name="$(echo ${line} | grep -Po "^.*?\ " | sed 's/\ $//')"
         url="$(echo ${line} | grep -o "https://.*$")"
-        curl_flags="${curl_flags} -o ${course_name}/${zipfile_name} ${url}"
-        mkdir ${course_name}
+        outfile="${course_name}/${zipfile_name}"
+        curl_flags="${curl_flags} -o ${outfile} ${url}"
+        zip_files+=( ${outfile} )
+        mkdir -p ${course_name}
     fi
 done < <(cat ${COURSES_CONF_File})
 
@@ -56,10 +83,10 @@ curl $CURL_DBG_FLAG -L --cookie cookies.txt ${curl_flags}
 
 rm cookies.txt tmp.html SAMLResponse
 
-for d in *; do
-    if [[ -d $d ]]; then
-        7z x -bd -y -o$d $d/${zipfile_name} > /dev/null
-        rm $d/${zipfile_name}
+for f in ${zip_files[@]}; do
+    if [[ -f $f ]]; then
+        7z x -bd -y -o$(dirname $f) $f > /dev/null
+        rm $f
     fi
 done
 
