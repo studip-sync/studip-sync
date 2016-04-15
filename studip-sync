@@ -10,30 +10,68 @@ COURSES_CONF_File="${CONFIG_DIR}/courses.conf"
 
 #############################################################################
 
-: ${DEBUG=0}
 
-if [[ $DEBUG == 0 ]]; then
-    CURL_DBG_FLAG="-s"
-    RSYNC_DBG_FLAG=""
-elif [[ $DEBUG == 1 ]]; then
-    RSYNC_DBG_FLAG="-v"
-    CURL_DBG_FLAG=""
-fi
+usage() {
+    echo
+    echo "Usage: $(basename $0) [ OPTIONS... ] /path/to/studip/sync/dir"
+    echo
+    echo "OPTIONS:"
+    echo "  -v   enable verbose output"
+    echo "  -i   reads username and password from interactive prompt"
+    echo "  -h   display this help and exit"
+}
 
-if [[ ! -d $1 ]]; then
-    echo "Usage: $0 /path/to/studip/sync/dir"
-    exit 1;
-fi
-
+interactive=false
+verbose=false
 workdir="/tmp/studip-sync/workdir"
 start_dir=$PWD
-sync_dir=$1
 zipfile_name="$(head -c16 /dev/urandom | md5sum | cut -d' ' -f1)_st_ip.zip"
+sync_dir=""
+
+while getopts "ivh" opt; do
+    case $opt in
+        i)
+            interactive=true
+            ;;
+        v)
+            verbose=true
+            ;;
+        h)
+            usage
+            exit
+            ;;
+        ?)
+            usage
+            exit 1
+            ;;
+    esac
+done
+
+shift $((OPTIND - 1))
+sync_dir=$(realpath $*)
+
+if [ ! -d "$sync_dir" ]; then
+    echo "'$sync_dir' is not a directory!"
+    exit 1
+fi
+
+if $verbose; then
+    RSYNC_DBG_FLAG="-v"
+    CURL_DBG_FLAG=""
+else
+    CURL_DBG_FLAG="-s"
+    RSYNC_DBG_FLAG=""
+fi
+
+if $interactive; then
+    read -p "loginname: " loginname
+    read -sp "password: " password
+else
+    source ${USER_CONF_FILE}
+fi
 
 mkdir -p ${workdir}
 cd ${workdir}
-
-source ${USER_CONF_FILE}
 
 curl $CURL_DBG_FLAG \
     -Lo tmp.html \
@@ -85,7 +123,12 @@ rm cookies.txt tmp.html SAMLResponse
 
 for f in ${zip_files[@]}; do
     if [[ -f $f ]]; then
-        7z x -bd -y -o$(dirname $f) $f > /dev/null
+        extract_cmd="7z x -bd -y -o$(dirname $f) $f"
+        if $verbose; then
+            $extract_cmd
+        else
+            $extract_cmd > /dev/null
+        fi
         rm $f
     fi
 done

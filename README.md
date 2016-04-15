@@ -31,7 +31,8 @@ chmod 600 /etc/studip-sync.conf.d/*
 ```
 
 ## Konfiguration
-Einstellen von Benutzername und Passwort
+Einstellen von Benutzername und Passwort. Nur benötigt, wenn `studip-sync` im
+nicht-interaktiven Modus genutzt wird (z.B. als cronjob).
 ```shell
 nano /etc/studip-sync.conf.d/user.conf
 ```
@@ -43,8 +44,11 @@ nano /etc/studip-sync.conf.d/courses.conf
 
 ## Verwendung
 ### Manuelle Synchronisation
-Der übergebene Pfad **muss** ein absoluter Pfad sein (beginnend mit `/`).
 ```shell
+# Frage nach Passwort und Nutzername
+studip-sync -i /path/to/sync/dir
+
+# Liest Passwort und Nutzername aus /etc/studip-sync.conf.d/user.conf
 studip-sync /path/to/sync/dir
 ```
 
