@@ -18,16 +18,28 @@ sudo zypper in curl p7zip rsync
 sudo pacman -S --needed p7zip rsync curl
 ```
 
-Kopiere das Skript und die Config Dateien an die entsprechenden Stellen.
-**Achtung:** Wenn du die `*.conf` Dateien an eine andere Stelle kopieren willst,
-musst du das studip-sync Skript anpassen.
+Kopiere das Skript in einen Ordner aus deinem `$PATH`. Das Skript sucht nach
+Konfigurationsdateien in `~/.config/studip-sync`. Wenn dort keine
+Konfigurationsdateien gefunden werden, dann wird versucht die Konfiguration von
+`/etc/studip-sync.conf.d/` zu lesen. Das Konfigurationsverzeichnis kann auch als
+Kommandozeilenparameter übergeben werden.
 ```shell
 cp studip-sync /usr/bin
+
+# Globale Konfiguration in /etc
 mkdir /etc/studip-sync.conf.d
 cp user.conf /etc/studip-sync.conf.d
 cp courses.conf /etc/studip-sync.conf.d
 chown -R $USER /etc/studip-sync.conf.d
 chmod 600 /etc/studip-sync.conf.d/*
+
+# Lokale Konfiguration in .config
+mkdir -p ~/.config/studip-sync
+cp user.conf ~/.config/studip-sync # optional wenn studip-sync -i
+cp courses.conf ~/.config/studip-sync
+chown -R $USER ~/.config/studip-sync
+chmod 600 ~/.config/studip-sync/*
+
 ```
 
 ## Konfiguration
