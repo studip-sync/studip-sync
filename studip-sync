@@ -1,23 +1,13 @@
 #!/bin/bash
 
-############
-# Settings #
-############
-
-CONFIG_DIR="/etc/studip-sync.conf.d"
-USER_CONF_FILE="${CONFIG_DIR}/user.conf"
-COURSES_CONF_File="${CONFIG_DIR}/courses.conf"
-
-#############################################################################
-
-
 usage() {
     echo
-    echo "Usage: $(basename $0) [ OPTIONS... ] /path/to/studip/sync/dir"
+    echo "Usage: $(basename "$0") [ OPTIONS... ] /path/to/studip/sync/dir"
     echo
     echo "OPTIONS:"
     echo "  -v   enable verbose output"
     echo "  -i   reads username and password from interactive prompt"
+    echo "  -c   set alternative config directory"
     echo "  -h   display this help and exit"
 }
 
@@ -27,8 +17,9 @@ workdir="/tmp/studip-sync/workdir"
 start_dir=$PWD
 zipfile_name="$(head -c16 /dev/urandom | md5sum | cut -d' ' -f1)_st_ip.zip"
 sync_dir=""
+config_dir=""
 
-while getopts "ivh" opt; do
+while getopts "ivhc:" opt; do
     case $opt in
         i)
             interactive=true
@@ -40,6 +31,9 @@ while getopts "ivh" opt; do
             usage
             exit
             ;;
+        c)
+            config_dir="$OPTARG"
+            ;;
         ?)
             usage
             exit 1
@@ -48,7 +42,7 @@ while getopts "ivh" opt; do
 done
 
 shift $((OPTIND - 1))
-sync_dir=$(realpath $*)
+sync_dir=$(realpath "$*")
 
 if [ ! -d "$sync_dir" ]; then
     echo "'$sync_dir' is not a directory!"
@@ -63,15 +57,45 @@ else
     RSYNC_DBG_FLAG=""
 fi
 
-if $interactive; then
-    read -p "loginname: " loginname
-    read -sp "password: " password
+if [ "$config_dir" != "" ]; then
+    if [ ! -d "$config_dir" ]; then
+        echo "'$config_dir' is not a directory!"
+        exit 1
+    fi
 else
-    source ${USER_CONF_FILE}
+    config_dir="$HOME/.config/studip-sync"
+    if [ ! -d "$config_dir" ]; then
+        config_dir="/etc/studip-sync.conf.d"
+    fi
+    if [ ! -d "$config_dir" ]; then
+        echo "No config directory found! Bye..."
+        exit 1
+    fi
 fi
 
-mkdir -p ${workdir}
-cd ${workdir}
+config_dir=$(realpath "$config_dir")
+user_conf_file="$config_dir/user.conf"
+courses_conf_file="$config_dir/courses.conf"
+
+if [ ! -r "$courses_conf_file" ]; then
+    echo "Courses configuration not found!"
+    exit 1
+fi
+
+if $interactive; then
+    read -rp "loginname: " loginname
+    read -rsp "password: " password
+    echo
+else
+    if [ ! -r "$user_conf_file" ]; then
+        echo "User configuration not found!"
+        exit 1
+    fi
+    source "$user_conf_file"
+fi
+
+mkdir -p "$workdir"
+cd "$workdir" || exit 1
 
 curl $CURL_DBG_FLAG \
     -Lo tmp.html \
@@ -82,7 +106,7 @@ curl $CURL_DBG_FLAG \
     -Lo SAMLResponse \
     --cookie-jar cookies.txt \
     --cookie cookies.txt \
-    --data "j_username=${loginname}&j_password=${password}" \
+    --data "j_username=$loginname&j_password=$password" \
     "HTTPS://sso.uni-passau.de/idp/Authn/UserPassword"
 
 RelayState=$(grep --text RelayState SAMLResponse \
@@ -101,39 +125,39 @@ curl $CURL_DBG_FLAG \
     -Lo tmp.html \
     --cookie-jar cookies.txt \
     --cookie cookies.txt \
-    --data "RelayState=${RelayState}&SAMLResponse=${SAMLResponse}"\
+    --data "RelayState=$RelayState&SAMLResponse=$SAMLResponse"\
     "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
 
 curl_flags=""
 zip_files=( )
 while read line; do
     if ! (echo $line | grep -qE "#|^$|^[[:blank:]]*$"); then
-        course_name="$(echo ${line} | grep -Po "^.*?\ " | sed 's/\ $//')"
-        url="$(echo ${line} | grep -o "https://.*$")"
-        outfile="${course_name}/${zipfile_name}"
-        curl_flags="${curl_flags} -o ${outfile} ${url}"
-        zip_files+=( ${outfile} )
-        mkdir -p ${course_name}
+        course_name="$(echo $line | grep -Po "^.*?\ " | sed 's/\ $//')"
+        url="$(echo $line | grep -o "https://.*$")"
+        outfile="$course_name/$zipfile_name"
+        curl_flags="$curl_flags -o $outfile $url"
+        zip_files+=( $outfile )
+        mkdir -p "$course_name"
     fi
-done < <(cat ${COURSES_CONF_File})
+done < <(cat $courses_conf_file)
 
-curl $CURL_DBG_FLAG -L --cookie cookies.txt ${curl_flags}
+curl $CURL_DBG_FLAG -L --cookie cookies.txt $curl_flags
 
 rm cookies.txt tmp.html SAMLResponse
 
-for f in ${zip_files[@]}; do
-    if [[ -f $f ]]; then
-        extract_cmd="7z x -bd -y -o$(dirname $f) $f"
+for f in "${zip_files[@]}"; do
+    if [[ -f "$f" ]]; then
+        extract_cmd="7z x -bd -y -o$(dirname "$f") $f"
         if $verbose; then
             $extract_cmd
         else
             $extract_cmd > /dev/null
         fi
-        rm $f
+        rm "$f"
     fi
 done
 
-rsync $RSYNC_DBG_FLAG -rc -b --suffix="_$(date +%d.%m.%Y_%H+%M+%S).old" . ${sync_dir}
+rsync $RSYNC_DBG_FLAG -rc -b --suffix="_$(date +%d.%m.%Y_%H+%M+%S).old" . "$sync_dir"
 
-cd "${start_dir}"
-rm -r ${workdir}
+cd "$start_dir" || exit 1
+rm -r $workdir
