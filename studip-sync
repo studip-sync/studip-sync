@@ -9,6 +9,8 @@ usage() {
     echo "  -i   reads username and password from interactive prompt"
     echo "  -c   set alternative config directory"
     echo "  -h   display this help and exit"
+    echo "  -p   remove 'dateiliste.csv' and 'filelist.csv'"
+    echo "  -f   force remove 'dateiliste.csv' and 'filelist.csv'"
 }
 
 interactive=false
@@ -18,8 +20,10 @@ start_dir=$PWD
 zipfile_name="$(head -c16 /dev/urandom | md5sum | cut -d' ' -f1)_st_ip.zip"
 sync_dir=""
 config_dir=""
+keep_stats=true
+force=false
 
-while getopts "ivhc:" opt; do
+while getopts "fpivhc:" opt; do
     case $opt in
         i)
             interactive=true
@@ -33,6 +37,12 @@ while getopts "ivhc:" opt; do
             ;;
         c)
             config_dir="$OPTARG"
+            ;;
+        p)
+            keep_stats=false
+            ;;
+        f)
+            force=true
             ;;
         ?)
             usage
@@ -147,17 +157,26 @@ rm cookies.txt tmp.html SAMLResponse
 
 for f in "${zip_files[@]}"; do
     if [[ -f "$f" ]]; then
-        extract_cmd="7z x -bd -y -o$(dirname "$f") $f"
+        dir=$(dirname "$f")
+        extract_cmd="7z x -bd -y -o$dir $f"
         if $verbose; then
             $extract_cmd
         else
             $extract_cmd > /dev/null
         fi
         rm "$f"
+        if ! $keep_stats; then
+            rm -f "$dir/dateiliste.csv"
+            rm -f "$dir/filelist.csv"
+        fi
     fi
 done
 
 rsync $RSYNC_DBG_FLAG -rc -b --suffix="_$(date +%d.%m.%Y_%H+%M+%S).old" . "$sync_dir"
+
+if $force; then
+    find "$sync_dir" \( -name "dateiliste.csv" -o -name "filelist.csv" \) -exec rm "{}" \;
+fi
 
 cd "$start_dir" || exit 1
 rm -r $workdir
