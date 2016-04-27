@@ -1,6 +1,14 @@
 # studip-sync
 
 ## Installation
+
+### Installation auf Arch Linux
+```
+cd /tmp && wget https://raw.githubusercontent.com/popeye123/studip-sync/master/PKGBUILD && makepkg -sri
+```
+
+### Andere Distros
+
 Klone das Repo
 ```
 git clone https://github.com/popeye123/studip-sync
@@ -13,9 +21,6 @@ sudo apt-get install curl p7zip-full rsync
 
 # OpenSUSE
 sudo zypper in curl p7zip rsync
-
-# Arch Linux
-sudo pacman -S --needed p7zip rsync curl
 ```
 
 Kopiere das Skript in einen Ordner aus deinem `$PATH`. Das Skript sucht nach
