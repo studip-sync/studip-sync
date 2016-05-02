@@ -15,6 +15,7 @@ depends=('p7zip' 'rsync' 'curl')
 makedepends=('git')
 source=("$pkgname::git+https://github.com/popeye123/studip-sync.git")
 md5sums=('SKIP')
+backup=('etc/studip-sync.conf.d/user.conf' 'etc/studip-sync.conf.d/courses.conf')
 
 pkgver(){
   cd "$srcdir/$pkgname"
