@@ -107,17 +107,18 @@ fi
 mkdir -p "$workdir"
 cd "$workdir" || exit 1
 
-curl $CURL_DBG_FLAG \
+sso_url=$(curl $CURL_DBG_FLAG \
     -Lo tmp.html \
     --cookie-jar cookies.txt \
-    "HTTPS://studip.uni-passau.de/studip/index.php?again=yes&sso=shib"
+    --write-out %{url_effective} \
+    "https://studip.uni-passau.de/studip/index.php?again=yes&sso=shib")
 
 curl $CURL_DBG_FLAG \
     -Lo SAMLResponse \
     --cookie-jar cookies.txt \
     --cookie cookies.txt \
-    --data "j_username=$loginname&j_password=$password" \
-    "HTTPS://sso.uni-passau.de/idp/Authn/UserPassword"
+    --data "j_username=$loginname&j_password=$password&_eventId_proceed=" \
+    "$sso_url"
 
 RelayState=$(grep --text RelayState SAMLResponse \
     | grep -Po 'value=".*?"' \
