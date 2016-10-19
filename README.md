@@ -4,7 +4,7 @@
 
 ### Installation auf Arch Linux
 ```
-cd /tmp && wget https://raw.githubusercontent.com/popeye123/studip-sync/master/PKGBUILD && makepkg -sri
+yaourt -S studip-sync-git
 ```
 
 ### Andere Distros
