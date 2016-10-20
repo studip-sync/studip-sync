@@ -129,7 +129,9 @@ curl $CURL_DBG_FLAG \
     -fLo SAMLResponse \
     --cookie-jar cookies.txt \
     --cookie cookies.txt \
-    --data "j_username=$loginname&j_password=$password&_eventId_proceed=" \
+    --data-urlencode "j_username=$loginname" \
+    --data-urlencode "j_password=$password" \
+    --data-urlencode "_eventId_proceed=" \
     "$sso_url"
 
 if [ $? -ne 0 ]; then
@@ -140,20 +142,19 @@ fi
 RelayState=$(grep --text RelayState SAMLResponse \
     | grep -Po 'value=".*?"' \
     | cut -d\" -f2 \
-    | recode html..latin1 \
-    | sed 's/:/%3A/g')
+    | recode html..latin1)
 
 SAMLResponse=$(grep --text SAMLResponse SAMLResponse \
     | grep -Po 'value=".*?"' \
     | cut -d\" -f2 \
-    | recode html..latin1 \
-    | sed -e 's/=/%3D/g' -e 's/+/%2B/g')
+    | recode html..latin1)
 
 curl $CURL_DBG_FLAG \
     -fLo tmp.html \
     --cookie-jar cookies.txt \
     --cookie cookies.txt \
-    --data "RelayState=$RelayState&SAMLResponse=$SAMLResponse"\
+    --data-urlencode "RelayState=$RelayState" \
+    --data-urlencode "SAMLResponse=$SAMLResponse" \
     "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
 
 if [ $? -ne 0 ]; then
