@@ -1,0 +1,20 @@
+{
+    "user": {
+        "login": "bob42",
+        "password": "password"
+    },
+    "destination": "~/Documents/Uni",
+    "courses": [{
+            "course_id": "ccf6c313af0b558d3f3e457d890aff5c",
+            "save_as": "Typen und Programmiersprachen/Vorlesung"
+        },
+        {
+            "course_id": "b307cdc24c65dc487be23a22b557a8c5",
+            "save_as": "Typen und Programmiersprachen/Übung"
+        },
+        {
+            "course_id": "2081a259c8b2dc1adb4bf2048d3b2a85",
+            "save_as": "Wireless Security"
+        }
+    ]
+}
