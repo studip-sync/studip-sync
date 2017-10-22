@@ -132,9 +132,8 @@ class Downloader(AbstractContextManager):
             # TODO Improve exception handling
             print("Login failed!")
             print("Aborting")
-            exit(1)
-        finally:
             self.driver.quit()
+            exit(1)
 
     def download(self, course_id):
         self.driver.get("https://studip.uni-passau.de/studip/dispatch.php/course/files?cid=" + course_id)
