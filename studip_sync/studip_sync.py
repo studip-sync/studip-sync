@@ -5,9 +5,9 @@ import shutil
 import os
 import tempfile
 import zipfile
-import requests
 import glob
 import subprocess
+import requests
 
 from time import sleep
 from contextlib import AbstractContextManager
