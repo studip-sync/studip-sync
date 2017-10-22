@@ -4,7 +4,7 @@ from setuptools import setup
 import studip_sync
 
 setup(
-    name='studip_sync',
+    name='studip-sync',
     description='Synchronize files on Stud.IP',
     long_description=studip_sync.__doc__,
     version=studip_sync.__version__,
@@ -12,7 +12,7 @@ setup(
     author=studip_sync.__author__,
     author_email=studip_sync.__email__,
     license=studip_sync.__license__,
-    scripts=['scripts/studip_sync'],
+    scripts=['scripts/studip-sync'],
     packages=['studip_sync'],
     install_requires=['selenium', 'requests'],
 )
