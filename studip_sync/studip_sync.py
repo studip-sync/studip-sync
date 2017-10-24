@@ -7,7 +7,6 @@ import subprocess
 import requests
 
 from time import sleep
-from contextlib import AbstractContextManager
 from datetime import datetime
 
 from selenium import webdriver
@@ -19,7 +18,7 @@ from selenium.webdriver.support import expected_conditions
 from studip_sync.config import config
 
 
-class StudipSync(AbstractContextManager):
+class StudipSync(object):
 
     def __init__(self):
         super(StudipSync, self).__init__()
@@ -49,6 +48,9 @@ class StudipSync(AbstractContextManager):
     def cleanup(self):
         shutil.rmtree(self.workdir)
 
+    def __enter__(self):
+        return self
+
     def __exit__(self, exc_type, exc_value, traceback):
         self.cleanup()
 
@@ -61,7 +63,7 @@ class RsyncWrapper(object):
         self.suffix = "_" + timestr + ".old"
 
     def sync(self, source, destination):
-        subprocess.run(["rsync", "--recursive", "--checksum", "--backup", "--suffix=" + self.suffix,
+        subprocess.call(["rsync", "--recursive", "--checksum", "--backup", "--suffix=" + self.suffix,
                         source, destination])
 
 
@@ -96,7 +98,7 @@ class Extractor(object):
             return destination
 
 
-class Downloader(AbstractContextManager):
+class Downloader(object):
 
     def __init__(self, workdir, username, password):
         super(Downloader, self).__init__()
@@ -105,6 +107,9 @@ class Downloader(AbstractContextManager):
         self.driver = webdriver.PhantomJS()
         self.driver.implicitly_wait(10)
         self._login(username, password)
+
+    def __enter__(self):
+        return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.driver.close()
