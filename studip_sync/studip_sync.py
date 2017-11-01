@@ -104,7 +104,7 @@ class Downloader(object):
         super(Downloader, self).__init__()
         self.workdir = workdir
 
-        self.driver = webdriver.PhantomJS()
+        self.driver = webdriver.PhantomJS(service_log_path="/dev/null")
         self.driver.implicitly_wait(10)
         self._login(username, password)
 
