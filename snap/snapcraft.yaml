@@ -1,0 +1,21 @@
+name: studip-sync
+version: git
+summary: Synchronize files fr om Stud.IP
+description: |
+  Download and synchronize files from Stud.IP -- the campus management
+  platform deployed at several German universities. Note that studip-sync
+  currently only works at the University of Passau.
+
+grade: devel # must be 'stable' to release into candidate/stable channels
+confinement: devmode # use 'strict' once you have the right plugs and slots
+
+parts:
+  studip-sync:
+    plugin: python
+    python-version: python3
+    source: ..
+    stage-packages: [phantomjs, rsync]
+
+apps:
+  studip-sync:
+    command: bin/studip-sync
