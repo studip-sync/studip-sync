@@ -9,17 +9,38 @@ pacaur -S studip-sync-git
 
 ### Other Distros
 
-Install dependencies
+Install rsync
 ```shell
 # Ubuntu/Debian
-sudo apt install python3-selenium python3-requests rsync phantomjs
+sudo apt install rsync
 ```
+
+Install PhantomJS. In some cases PhantomJS can be installed from your distribution's repositories. However, on Ubuntu
+the version from the repo is not compatible with studip-sync. It is therefore recommended to download and install
+PhantomJS manually.
+```shell
+# Recommended: Download and install manually
+# Note: This won't work on 32bit or ARM Architectures.
+wget https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-2.1.1-linux-x86_64.tar.bz2
+tar xf phantomjs-2.1.1-linux-x86_64.tar.bz2
+sudo cp phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/bin
+
+# Alternatively: Install from repo (Good luck, this might not work!!)
+sudo apt install phantomjs
+```
+
+
 
 Clone this repository and install studip-sync
 ```shell
 git clone https://github.com/woefe/studip-sync
 cd studip-sync
-sudo python3 setup.py install
+
+# Install globally
+sudo ./setup.py install
+
+# Install for the current user
+./setup.py install --user
 ```
 
 ## Configuration
