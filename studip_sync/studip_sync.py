@@ -17,6 +17,8 @@ from selenium.webdriver.support import expected_conditions
 
 from studip_sync.config import config
 
+class DownloadError(Exception):
+    pass
 
 class StudipSync(object):
 
@@ -39,7 +41,11 @@ class StudipSync(object):
         with Downloader(self.download_dir, config.username, config.password) as downloader:
             for course in config.courses:
                 print("Downloading '" + course["save_as"] + "'...")
-                zip_location = downloader.download(course["course_id"])
+                try:
+                    zip_location = downloader.download(course["course_id"])
+                except DownloadError as e:
+                    print("ERROR: Download failed for '" + course["save_as"] + "'")
+                    return None
                 extractor.extract(zip_location, course["save_as"])
 
         print("Synchronizing with existing files...")
@@ -88,14 +94,17 @@ class Extractor(object):
                 os.rmdir(root)
 
     def extract(self, archive_filename, destination, cleanup=True):
-        with zipfile.ZipFile(archive_filename, "r") as z:
-            destination = os.path.join(self.basedir, destination)
-            z.extractall(destination)
-            if cleanup:
-                self.remove_intermediary_dir(destination)
-                self.remove_empty_dirs(destination)
+        try:
+            with zipfile.ZipFile(archive_filename, "r") as z:
+                destination = os.path.join(self.basedir, destination)
+                z.extractall(destination)
+                if cleanup:
+                    self.remove_intermediary_dir(destination)
+                    self.remove_empty_dirs(destination)
 
-            return destination
+                return destination
+        except zipfile.BadZipFile:
+            return None
 
 
 class Downloader(object):
@@ -157,6 +166,8 @@ class Downloader(object):
             cookie_jar.set(cookie["name"], cookie["value"], domain=cookie["domain"], path=cookie["path"])
 
         with requests.post(url, params=params, data=data, cookies=cookie_jar, stream=True) as r:
+            if not r.ok:
+                raise DownloadError("Download failed " + url)
             path = os.path.join(self.workdir, course_id)
             with open(path, "wb") as f:
                 shutil.copyfileobj(r.raw, f)
