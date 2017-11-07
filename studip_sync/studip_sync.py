@@ -20,6 +20,9 @@ from studip_sync.config import config
 class DownloadError(Exception):
     pass
 
+class ExtractionError(Exception):
+    pass
+
 class StudipSync(object):
 
     def __init__(self):
@@ -43,10 +46,11 @@ class StudipSync(object):
                 print("Downloading '" + course["save_as"] + "'...")
                 try:
                     zip_location = downloader.download(course["course_id"])
+                    extractor.extract(zip_location, course["save_as"])
                 except DownloadError as e:
                     print("ERROR: Download failed for '" + course["save_as"] + "'")
-                    return None
-                extractor.extract(zip_location, course["save_as"])
+                except ExtractionError as e:
+                    print("ERROR: Extraction failed for '" + course["save_as"] + "'")
 
         print("Synchronizing with existing files...")
         rsync.sync(self.extract_dir + "/", self.destination_dir)
@@ -104,7 +108,7 @@ class Extractor(object):
 
                 return destination
         except zipfile.BadZipFile:
-            return None
+            raise ExtractionError("Cannot extract file: " + archive_filename)
 
 
 class Downloader(object):
