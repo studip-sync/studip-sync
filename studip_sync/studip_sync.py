@@ -14,6 +14,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
+from selenium.common.exceptions import NoSuchElementException
 
 from studip_sync.config import config
 
@@ -49,6 +50,9 @@ class StudipSync(object):
                     extractor.extract(zip_location, course["save_as"])
                 except DownloadError as e:
                     print("ERROR: Download failed for '" + course["save_as"] + "'")
+                    print("       Possible Reasons:")
+                    print("       - Folder is bigger than 100MB (Stud.IP does not allow downloads > 100MB)")
+                    print("       - You are not subscribed to the course and cannot access files")
                 except ExtractionError as e:
                     print("ERROR: Extraction failed for '" + course["save_as"] + "'")
 
@@ -153,7 +157,11 @@ class Downloader(object):
     def download(self, course_id):
         self.driver.get("https://studip.uni-passau.de/studip/dispatch.php/course/files?cid=" + course_id)
 
-        folder_id = self.driver.find_element_by_name("parent_folder_id").get_attribute("value")
+        try:
+            folder_id = self.driver.find_element_by_name("parent_folder_id").get_attribute("value")
+        except NoSuchElementException:
+            raise DownloadError("Could not locate parent folder for course: " + course_id)
+
         params = {"cid": course_id}
         url = "https://studip.uni-passau.de/studip/dispatch.php/file/bulk/" + folder_id
         csrf_token = self.driver.execute_script("return STUDIP.CSRF_TOKEN.value")
