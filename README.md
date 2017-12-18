@@ -1,5 +1,8 @@
 # studip-sync
 
+Download and synchronize files from Stud.IP -- the campus management platform deployed at several German universities.
+Note that studip-sync currently only works at the University of Passau.
+
 ## Installation
 
 ### Installation on Arch Linux
@@ -29,8 +32,6 @@ sudo cp phantomjs-2.1.1-linux-x86_64/bin/phantomjs /usr/bin
 sudo apt install phantomjs
 ```
 
-
-
 Clone this repository and install studip-sync
 ```shell
 git clone https://github.com/woefe/studip-sync
@@ -53,8 +54,10 @@ cp config.json ~/.config/studip-sync/config.json
 ```
 
 The `user` and `destination` options are optional, if you specify them on the commandline. To find out the `course_id`
-of a course, navigate to the overview page of a course in your browser and copy the `cid` parameter from the URL Bar. A
-configuration file might look like this:
+of a course, navigate to the overview page of a course in your browser and copy the `cid` parameter from the URL Bar.
+The `sync_only` parameter is optional and allows you to sync only the specified subdirectories. A configuration file
+might look like this:
+
 ```json
 {
     "user": {
@@ -63,6 +66,11 @@ configuration file might look like this:
     },
     "destination": "~/Documents/Uni",
     "courses": [{
+            "course_id": "3dcb76de95b5d8148de3cb72340ade55",
+            "save_as": "Computer Networks and Energy Systems/Übung",
+            "sync_only": ["daad713cca2f27a0f022c34d84d3c605", "141a4c2ac3bd5b9f8321355192feead8"]
+        },
+        {
             "course_id": "ccf6c313af0b558d3f3e457d890aff5c",
             "save_as": "Typen und Programmiersprachen/Vorlesung"
         },
