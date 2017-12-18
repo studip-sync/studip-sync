@@ -46,7 +46,7 @@ class StudipSync(object):
             for course in config.courses:
                 print("Downloading '" + course["save_as"] + "'...")
                 try:
-                    zip_location = downloader.download(course["course_id"])
+                    zip_location = downloader.download(course["course_id"], course.get("sync_only"))
                     extractor.extract(zip_location, course["save_as"])
                 except DownloadError as e:
                     print("ERROR: Download failed for '" + course["save_as"] + "'")
@@ -154,7 +154,7 @@ class Downloader(object):
             self.driver.quit()
             exit(1)
 
-    def download(self, course_id):
+    def download(self, course_id, sync_only=None):
         self.driver.get("https://studip.uni-passau.de/studip/dispatch.php/course/files?cid=" + course_id)
 
         try:
@@ -168,7 +168,7 @@ class Downloader(object):
         data = {
             "security_token": csrf_token,
             # "parent_folder_id": folder_id,
-            "ids[]": folder_id,
+            "ids[]": sync_only or folder_id,
             "download": 1
         }
 
