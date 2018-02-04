@@ -127,7 +127,7 @@ class Downloader(object):
 
         options = Options()
         options.add_argument("--headless")
-        self.driver = webdriver.Firefox(firefox_options=options)
+        self.driver = webdriver.Firefox(firefox_options=options, log_path=os.devnull)
         self.driver.implicitly_wait(10)
         self._login(username, password)
 
