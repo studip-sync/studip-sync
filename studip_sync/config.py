@@ -40,7 +40,7 @@ class Config(object):
             raise ConfigError("No courses are available. Add courses to your config file!")
 
         if not self.target:
-            raise ConfigError("Target directory is missing. You can specify the target directory via" \
+            raise ConfigError("Target directory is missing. You can specify the target directory via"
                               "the commandline or the JSON config file!")
 
     def user_property(self, prop):

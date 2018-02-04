@@ -19,11 +19,14 @@ from selenium.common.exceptions import NoSuchElementException
 
 from studip_sync.config import config
 
+
 class DownloadError(Exception):
     pass
 
+
 class ExtractionError(Exception):
     pass
+
 
 class StudipSync(object):
 
@@ -79,7 +82,8 @@ class RsyncWrapper(object):
 
     def sync(self, source, destination):
         subprocess.call(["rsync", "--recursive", "--checksum", "--backup", "--suffix=" + self.suffix,
-                        source, destination])
+                         source, destination])
+
 
 class Extractor(object):
 
