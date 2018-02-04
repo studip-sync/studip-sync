@@ -14,6 +14,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import NoSuchElementException
 
 from studip_sync.config import config
@@ -80,7 +81,6 @@ class RsyncWrapper(object):
         subprocess.call(["rsync", "--recursive", "--checksum", "--backup", "--suffix=" + self.suffix,
                         source, destination])
 
-
 class Extractor(object):
 
     def __init__(self, basedir):
@@ -121,7 +121,9 @@ class Downloader(object):
         super(Downloader, self).__init__()
         self.workdir = workdir
 
-        self.driver = webdriver.PhantomJS(service_log_path="/dev/null")
+        options = Options()
+        options.add_argument("--headless")
+        self.driver = webdriver.Firefox(firefox_options=options)
         self.driver.implicitly_wait(10)
         self._login(username, password)
 
