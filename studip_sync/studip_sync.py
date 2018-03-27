@@ -107,12 +107,19 @@ class Extractor(object):
             if not dirs and not files:
                 os.rmdir(root)
 
+    @staticmethod
+    def remove_filelist(directory):
+        filelist = os.path.join(directory, "archive_filelist.csv")
+        if os.path.isfile(filelist):
+            os.remove(filelist)
+
     def extract(self, archive_filename, destination, cleanup=True):
         try:
             with zipfile.ZipFile(archive_filename, "r") as archive:
                 destination = os.path.join(self.basedir, destination)
                 archive.extractall(destination)
                 if cleanup:
+                    self.remove_filelist(destination)
                     self.remove_intermediary_dir(destination)
                     self.remove_empty_dirs(destination)
 
