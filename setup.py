@@ -14,5 +14,5 @@ setup(
     license=studip_sync.__license__,
     scripts=['scripts/studip-sync'],
     packages=['studip_sync'],
-    install_requires=['beautifulsoup4', 'requests'],
+    install_requires=['beautifulsoup4', 'requests', 'lxml'],
 )
