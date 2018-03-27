@@ -34,7 +34,7 @@ Copy the example configuration file to `~/.config/studip-sync/config.json` and c
 password and synchronization directory.
 
 ```shell
-cp config.json ~/.config/studip-sync/config.json
+curl --create-dirs -Lo ~/.config/studip-sync/config.json https://raw.githubusercontent.com/woefe/studip-sync/master/config.json 
 ```
 
 The `user` and `destination` options are optional, if you specify them on the commandline. To find out the `course_id`
