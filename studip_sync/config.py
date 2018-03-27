@@ -13,16 +13,24 @@ class Config(object):
     def __init__(self):
         super(Config, self).__init__()
         parser = argparse.ArgumentParser(description="Synchronize Stud.IP files")
+
         parser.add_argument("-i", "--interactive", action="store_true",
-                            help="read username and password from stdin (and not from config file)")
-        parser.add_argument("-c", "--config", type=argparse.FileType('r'), metavar="FILE", default=None,
-                            help="set the path to the config file (Default is '~/.config/studip-sync/config.json')")
+                            help="read username and password from stdin (and not from config "
+                            "file)")
+
+        parser.add_argument("-c", "--config", type=argparse.FileType('r'), metavar="FILE",
+                            default=None,
+                            help="set the path to the config file (Default is "
+                            "'~/.config/studip-sync/config.json')")
+
         parser.add_argument("destination", nargs="?", metavar="DIR", default=None,
                             help="synchronize the files to the given destination directory")
 
         self.args = parser.parse_args()
 
-        config_file = self.args.config or open(os.path.expanduser("~/.config/studip-sync/config.json"))
+        config_file = self.args.config or \
+            open(os.path.expanduser("~/.config/studip-sync/config.json"))
+
         self.config = json.load(config_file)
         self._username = None
         self._password = None
@@ -40,8 +48,8 @@ class Config(object):
             raise ConfigError("No courses are available. Add courses to your config file!")
 
         if not self.target:
-            raise ConfigError("Target directory is missing. You can specify the target directory via"
-                              "the commandline or the JSON config file!")
+            raise ConfigError("Target directory is missing. You can specify the target directory "
+                              "via the commandline or the JSON config file!")
 
     def user_property(self, prop):
         user = self.config.get("user")
@@ -86,8 +94,8 @@ class Config(object):
 
 
 try:
-    config = Config()
-except ConfigError as e:
-    print(str(e))
+    CONFIG = Config()
+except ConfigError as err:
+    print(str(err))
     print("Aborting...")
     exit(1)
