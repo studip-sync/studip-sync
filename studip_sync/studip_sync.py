@@ -4,25 +4,20 @@ import tempfile
 import zipfile
 import glob
 import subprocess
-import requests
-
-from time import sleep
 from datetime import datetime
 
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions
-from selenium.webdriver.firefox.options import Options
-from selenium.common.exceptions import NoSuchElementException
+import requests
 
+from studip_sync import parsers
 from studip_sync.config import config
+
+
+class LoginError(Exception):
+    pass
 
 
 class DownloadError(Exception):
     pass
-
 
 class ExtractionError(Exception):
     pass
@@ -45,20 +40,20 @@ class StudipSync(object):
         extractor = Extractor(self.extract_dir)
         rsync = RsyncWrapper()
 
-        print("Logging in...")
-        with Downloader(self.download_dir, config.username, config.password) as downloader:
+        with Downloader(self.download_dir) as downloader:
+            print("Logging in...")
+            downloader.login(config.username, config.password)
             for course in config.courses:
-                print("Downloading '" + course["save_as"] + "'...")
+                print("Downloading '{}'...".format(course["save_as"]), end="", flush=True)
                 try:
                     zip_location = downloader.download(course["course_id"], course.get("sync_only"))
                     extractor.extract(zip_location, course["save_as"])
-                except DownloadError as e:
-                    print("ERROR: Download failed for '" + course["save_as"] + "'")
-                    print("       Possible Reasons:")
-                    print("       - Folder is bigger than 100MB (Stud.IP does not allow downloads > 100MB)")
-                    print("       - You are not subscribed to the course and cannot access files")
-                except ExtractionError as e:
-                    print("ERROR: Extraction failed for '" + course["save_as"] + "'")
+                except DownloadError:
+                    print(" Download FAILED!", end="")
+                except ExtractionError:
+                    print(" Extracting FAILED!", end="")
+                finally:
+                    print()
 
         print("Synchronizing with existing files...")
         rsync.sync(self.extract_dir + "/", self.destination_dir)
@@ -93,11 +88,15 @@ class Extractor(object):
 
     @staticmethod
     def remove_intermediary_dir(extracted_dir):
-        subdirs = os.listdir(extracted_dir)
+        def _filter_dirs(d):
+            return os.path.isdir(os.path.join(extracted_dir, d))
+
+        subdirs = list(filter(_filter_dirs, os.listdir(extracted_dir)))
         if len(subdirs) == 1:
-            for filename in glob.iglob(os.path.join(extracted_dir, subdirs[0], "*")):
+            intermediary = os.path.join(extracted_dir, subdirs[0])
+            for filename in glob.iglob(os.path.join(intermediary, "*")):
                 shutil.move(filename, extracted_dir)
-            os.rmdir(os.path.join(extracted_dir, subdirs[0]))
+            os.rmdir(intermediary)
 
     @staticmethod
     def remove_empty_dirs(directory):
@@ -116,76 +115,66 @@ class Extractor(object):
 
                 return destination
         except zipfile.BadZipFile:
-            raise ExtractionError("Cannot extract file: " + archive_filename)
+            raise ExtractionError("Cannot extract file {}".format(archive_filename))
 
 
 class Downloader(object):
 
-    def __init__(self, workdir, username, password):
+    def __init__(self, workdir):
         super(Downloader, self).__init__()
         self.workdir = workdir
 
-        options = Options()
-        options.add_argument("--headless")
-        self.driver = webdriver.Firefox(firefox_options=options, log_path=os.devnull)
-        self.driver.implicitly_wait(10)
-        self._login(username, password)
+        self.session = requests.Session()
+        self.csrf_token = ""
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        self.driver.close()
+        self.session.__exit__()
 
-    def _login(self, username, password):
-        self.driver.get("https://studip.uni-passau.de/studip/index.php?again=yes&sso=shib")
+    def login(self, username, password):
+        with self.session.get("https://studip.uni-passau.de/studip/index.php?again=yes&sso=shib") as r:
+            if not r.ok:
+                raise LoginError("Cannot access Stud.IP login page")
+            sso_url = "https://sso.uni-passau.de" + parsers.extract_sso_url(r.text)
 
-        username_element = self.driver.find_element_by_id("username")
-        username_element.clear()
-        username_element.send_keys(username)
+        login_data = {
+            "j_username": username,
+            "j_password": password,
+            "donotcache": 1,
+            "_eventId_proceed": ""
+        }
 
-        password_element = self.driver.find_element_by_id("password")
-        password_element.clear()
-        password_element.send_keys(password)
-        password_element.send_keys(Keys.ENTER)
+        with self.session.post(sso_url, data=login_data) as r:
+            if not r.ok:
+                raise LoginError("Cannot access SSO server")
+            saml_data = parsers.extract_saml_data(r.text)
 
-        try:
-            element = WebDriverWait(self.driver, 7).until(
-                expected_conditions.presence_of_element_located((By.ID, "footer"))
-            )
-        except:
-            # TODO Improve exception handling
-            print("Login failed!")
-            print("Aborting")
-            self.driver.quit()
-            exit(1)
+        with self.session.post("https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST", data=saml_data) as r:
+            if not r.ok:
+                raise LoginError("Cannot access Stud.IP main page")
+            self.csrf_token = parsers.extract_csrf_token(r.text)
 
     def download(self, course_id, sync_only=None):
-        self.driver.get("https://studip.uni-passau.de/studip/dispatch.php/course/files?cid=" + course_id)
-
-        try:
-            folder_id = self.driver.find_element_by_name("parent_folder_id").get_attribute("value")
-        except NoSuchElementException:
-            raise DownloadError("Could not locate parent folder for course: " + course_id)
-
         params = {"cid": course_id}
+
+        with self.session.get("https://studip.uni-passau.de/studip/dispatch.php/course/files", params=params) as r:
+            if not r.ok:
+                raise DownloadError("Cannot access course files page")
+            folder_id = parsers.extract_parent_folder_id(r.text)
+
         url = "https://studip.uni-passau.de/studip/dispatch.php/file/bulk/" + folder_id
-        csrf_token = self.driver.execute_script("return STUDIP.CSRF_TOKEN.value")
         data = {
-            "security_token": csrf_token,
+            "security_token": self.csrf_token,
             # "parent_folder_id": folder_id,
             "ids[]": sync_only or folder_id,
             "download": 1
         }
 
-        selenium_cookies = self.driver.get_cookies()
-        cookie_jar = requests.cookies.RequestsCookieJar()
-        for cookie in selenium_cookies:
-            cookie_jar.set(cookie["name"], cookie["value"], domain=cookie["domain"], path=cookie["path"])
-
-        with requests.post(url, params=params, data=data, cookies=cookie_jar, stream=True) as r:
+        with self.session.post(url, params=params, data=data, stream=True) as r:
             if not r.ok:
-                raise DownloadError("Download failed " + url)
+                raise DownloadError("Cannot download course files")
             path = os.path.join(self.workdir, course_id)
             with open(path, "wb") as f:
                 shutil.copyfileobj(r.raw, f)
