@@ -4,4 +4,4 @@
 from studip_sync.studip_sync import StudipSync
 
 with StudipSync() as s:
-    s.sync()
+    exit(s.sync())

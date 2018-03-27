@@ -7,7 +7,8 @@ import subprocess
 from datetime import datetime
 
 from studip_sync.config import CONFIG
-from studip_sync.downloader import Downloader, DownloadError
+from studip_sync.downloader import Downloader, DownloadError, LoginError
+from studip_sync.parsers import ParserError
 
 
 class ExtractionError(Exception):
@@ -33,7 +34,13 @@ class StudipSync(object):
 
         with Downloader(self.download_dir) as downloader:
             print("Logging in...")
-            downloader.login(CONFIG.username, CONFIG.password)
+            try:
+                downloader.login(CONFIG.username, CONFIG.password)
+            except (LoginError, ParserError):
+                print("Login failed!")
+                return 1
+
+            status_code = 0
             for course in CONFIG.courses:
                 print("Downloading '{}'...".format(course["save_as"]), end="", flush=True)
                 try:
@@ -42,13 +49,16 @@ class StudipSync(object):
                     extractor.extract(zip_location, course["save_as"])
                 except DownloadError:
                     print(" Download FAILED!", end="")
+                    status_code = 2
                 except ExtractionError:
                     print(" Extracting FAILED!", end="")
+                    status_code = 2
                 finally:
                     print()
 
         print("Synchronizing with existing files...")
         rsync.sync(self.extract_dir + "/", self.destination_dir)
+        return status_code
 
     def cleanup(self):
         shutil.rmtree(self.workdir)
