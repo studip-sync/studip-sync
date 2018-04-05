@@ -1,6 +1,6 @@
 name: studip-sync
 version: git
-summary: Synchronize files fr om Stud.IP
+summary: Synchronize files from Stud.IP
 description: |
   Download and synchronize files from Stud.IP -- the campus management
   platform deployed at several German universities. Note that studip-sync
