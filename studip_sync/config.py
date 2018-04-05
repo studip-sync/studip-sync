@@ -28,8 +28,9 @@ class Config(object):
 
         self.args = parser.parse_args()
 
-        config_file = self.args.config or \
-            open(os.path.expanduser("~/.config/studip-sync/config.json"))
+        prefix = os.environ.get("XDG_CONFIG_HOME") or "~/.config"
+        path = os.path.join(prefix, "studip-sync/config.json")
+        config_file = self.args.config or open(os.path.expanduser(path))
 
         self.config = json.load(config_file)
         self._username = None
