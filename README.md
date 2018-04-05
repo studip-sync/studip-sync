@@ -16,15 +16,21 @@ Note that studip-sync currently only works at the University of Passau.
 **Important Note**: If you install studip-sync as a snap, you cannot use `~` to reference your home directory in the
 config file. If you ignore this note, the files will be synced to the `snap/studip-sync/current/...`
 
+**Limitation**: The snap can only write to non-hidden directories in you home directory. If you omit
+Step 3, it cannot write to your home directory at all.
+
 ### Installation on Arch Linux
 Install [studip-sync-git](https://aur.archlinux.org/packages/studip-sync-git/) from the AUR.
 
 ## Configuration
 
-Copy the example configuration file to `~/.config/studip-sync/config.json` and configure your courses, username,
-password and synchronization directory.
+Download the example configuration file and configure your courses, username, password and synchronization directory.
 
 ```shell
+# Snap install
+curl --create-dirs -Lo ~/snap/studip-sync/current/.config/studip-sync/config.json https://raw.githubusercontent.com/woefe/studip-sync/master/config.json 
+
+# Other install methods
 curl --create-dirs -Lo ~/.config/studip-sync/config.json https://raw.githubusercontent.com/woefe/studip-sync/master/config.json 
 ```
 
