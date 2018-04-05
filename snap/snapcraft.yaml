@@ -6,16 +6,17 @@ description: |
   platform deployed at several German universities. Note that studip-sync
   currently only works at the University of Passau.
 
-grade: devel # must be 'stable' to release into candidate/stable channels
-confinement: devmode # use 'strict' once you have the right plugs and slots
+grade: devel
+confinement: strict
 
 parts:
   studip-sync:
     plugin: python
     python-version: python3
     source: ..
-    stage-packages: [phantomjs, rsync]
+    stage-packages: [rsync]
 
 apps:
   studip-sync:
-    command: bin/studip-sync
+    command: env LC_ALL=C.UTF-8 LANG=C.UTF-8 $SNAP/bin/studip-sync
+    plugs: [home, network]
