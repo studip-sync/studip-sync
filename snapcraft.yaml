@@ -14,6 +14,9 @@ parts:
     plugin: python
     python-version: python3
     source: .
+    build-packages:
+        - on armhf: [zlib1g-dev, libxml2-dev, libxslt-dev, python-dev]
+        - on arm64: [zlib1g-dev, libxml2-dev, libxslt-dev, python-dev]
     stage-packages: [rsync]
 
 apps:
