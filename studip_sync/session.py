@@ -4,11 +4,15 @@ import requests
 from studip_sync import parsers
 
 
-class LoginError(Exception):
+class SessionError(Exception):
     pass
 
 
-class DownloadError(Exception):
+class LoginError(SessionError):
+    pass
+
+
+class DownloadError(SessionError):
     pass
 
 
@@ -29,12 +33,15 @@ class URL(object):
     def studip_main():
         return "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
 
+    @staticmethod
+    def courses():
+        return "https://studip.uni-passau.de/studip/dispatch.php/my_courses"
 
-class Downloader(object):
 
-    def __init__(self, workdir):
-        super(Downloader, self).__init__()
-        self.workdir = workdir
+class Session(object):
+
+    def __init__(self):
+        super(Session, self).__init__()
 
         self.session = requests.Session()
         self.csrf_token = ""
@@ -68,7 +75,14 @@ class Downloader(object):
                 raise LoginError("Cannot access Stud.IP main page")
             self.csrf_token = parsers.extract_csrf_token(response.text)
 
-    def download(self, course_id, sync_only=None):
+    def get_couses(self):
+        with self.session.get(URL.courses()) as response:
+            if not response.ok:
+                raise SessionError("Failed to get courses")
+
+            return parsers.extract_courses(response.text)
+
+    def download(self, course_id, workdir, sync_only=None):
         params = {"cid": course_id}
 
         with self.session.get(URL.files_main(), params=params) as response:
@@ -87,7 +101,7 @@ class Downloader(object):
         with self.session.post(download_url, params=params, data=data, stream=True) as response:
             if not response.ok:
                 raise DownloadError("Cannot download course files")
-            path = os.path.join(self.workdir, course_id)
+            path = os.path.join(workdir, course_id)
             with open(path, "wb") as download_file:
                 shutil.copyfileobj(response.raw, download_file)
                 return path

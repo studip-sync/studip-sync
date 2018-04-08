@@ -7,7 +7,7 @@ import subprocess
 from datetime import datetime
 
 from studip_sync.config import CONFIG
-from studip_sync.downloader import Downloader, DownloadError, LoginError
+from studip_sync.session import Session, DownloadError, LoginError
 from studip_sync.parsers import ParserError
 
 
@@ -32,10 +32,10 @@ class StudipSync(object):
         extractor = Extractor(self.extract_dir)
         rsync = RsyncWrapper()
 
-        with Downloader(self.download_dir) as downloader:
+        with Session() as session:
             print("Logging in...")
             try:
-                downloader.login(CONFIG.username, CONFIG.password)
+                session.login(CONFIG.username, CONFIG.password)
             except (LoginError, ParserError):
                 print("Login failed!")
                 return 1
@@ -44,8 +44,8 @@ class StudipSync(object):
             for course in CONFIG.courses:
                 print("Downloading '{}'...".format(course["save_as"]), end="", flush=True)
                 try:
-                    zip_location = downloader.download(
-                        course["course_id"], course.get("sync_only"))
+                    zip_location = session.download(
+                        course["course_id"], self.download_dir, course.get("sync_only"))
                     extractor.extract(zip_location, course["save_as"])
                 except DownloadError:
                     print(" Download FAILED!", end="")

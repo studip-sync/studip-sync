@@ -1,7 +1,8 @@
 import json
-import argparse
 import os
 import getpass
+from studip_sync.arg_parser import ARGS
+from studip_sync import CONFIG_PATH
 
 
 class ConfigError(Exception):
@@ -12,25 +13,15 @@ class Config(object):
 
     def __init__(self):
         super(Config, self).__init__()
-        parser = argparse.ArgumentParser(description="Synchronize Stud.IP files")
-
-        parser.add_argument("-i", "--interactive", action="store_true",
-                            help="read username and password from stdin (and not from config "
-                            "file)")
-
-        parser.add_argument("-c", "--config", type=argparse.FileType('r'), metavar="FILE",
-                            default=None,
-                            help="set the path to the config file (Default is "
-                            "'~/.config/studip-sync/config.json')")
-
-        parser.add_argument("destination", nargs="?", metavar="DIR", default=None,
-                            help="synchronize the files to the given destination directory")
-
-        self.args = parser.parse_args()
-
-        prefix = os.environ.get("XDG_CONFIG_HOME") or "~/.config"
-        path = os.path.join(prefix, "studip-sync/config.json")
-        config_file = self.args.config or open(os.path.expanduser(path))
+        self.args = ARGS
+        if self.args.config:
+            config_file = self.args.config
+        else:
+            try:
+                config_file = open(CONFIG_PATH)
+            except FileNotFoundError:
+                raise ConfigError("Config file missing! Run 'studip-sync --init' to create a new "
+                                  "config file")
 
         self.config = json.load(config_file)
         self._username = None
@@ -39,6 +30,10 @@ class Config(object):
         self._check()
 
     def _check(self):
+        if not self.target:
+            raise ConfigError("Target directory is missing. You can specify the target directory "
+                              "via the commandline or the JSON config file!")
+
         if not self.username:
             raise ConfigError("Username is missing")
 
@@ -47,10 +42,6 @@ class Config(object):
 
         if not self.courses:
             raise ConfigError("No courses are available. Add courses to your config file!")
-
-        if not self.target:
-            raise ConfigError("Target directory is missing. You can specify the target directory "
-                              "via the commandline or the JSON config file!")
 
     def user_property(self, prop):
         user = self.config.get("user")
@@ -89,7 +80,7 @@ class Config(object):
         if self.args.destination:
             destination = self.args.destination
         else:
-            destination = self.config.get("destination")
+            destination = self.config.get("destination", "")
 
         return os.path.expanduser(destination)
 

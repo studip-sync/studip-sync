@@ -16,28 +16,26 @@ Note that studip-sync currently only works at the University of Passau.
 **Important Note**: If you install studip-sync as a snap, you cannot use `~` to reference your home directory in the
 config file. If you ignore this note, the files will be synced to the `snap/studip-sync/current/...`
 
-**Limitation**: The snap can only write to non-hidden directories in you home directory. If you omit
-Step 3, it cannot write to your home directory at all.
+**Limitation**: The snap can only write to non-hidden directories in you home directory. If you omit Step 3, it cannot
+write to your home directory at all.
 
 ### Installation on Arch Linux
 Install [studip-sync-git](https://aur.archlinux.org/packages/studip-sync-git/) from the AUR.
 
 ## Configuration
 
-Download the example configuration file and configure your courses, username, password and synchronization directory.
+Create a new configuration file. The command below tries to detect all courses that are visible on the "My Courses" Page
+in Stud.IP. So make sure that the subcategories you want to include are expanded and the proper semester(s) is/are
+selected.
 
 ```shell
-# Snap install
-curl --create-dirs -Lo ~/snap/studip-sync/current/.config/studip-sync/config.json https://raw.githubusercontent.com/woefe/studip-sync/master/config.json 
-
-# Other install methods
-curl --create-dirs -Lo ~/.config/studip-sync/config.json https://raw.githubusercontent.com/woefe/studip-sync/master/config.json 
+studip-sync --init
 ```
+Next, review the generated configuration file (its path is printed in the last line of above command).
 
-The `user` and `destination` options are optional, if you specify them on the commandline. To find out the `course_id`
-of a course, navigate to the overview page of a course in your browser and copy the `cid` parameter from the URL Bar.
-The `sync_only` parameter is optional and allows you to sync only the specified subdirectories. A configuration file
-might look like this:
+**Note**: You can create subdirectories (e.g. for lectures and exercises) by using slashes (`/`) in `save_as`.
+
+### Example
 
 ```json
 {
@@ -45,7 +43,7 @@ might look like this:
         "login": "bob42",
         "password": "password"
     },
-    "destination": "~/Documents/Uni",
+    "destination": "/home/bob/Documents/Uni",
     "courses": [{
             "course_id": "3dcb76de95b5d8148de3cb72340ade55",
             "save_as": "Computer Networks and Energy Systems/Übung",
@@ -66,6 +64,9 @@ might look like this:
     ]
 }
 ```
+The `user` and `destination` options are optional, if you specify them on the commandline. To find out the `course_id`
+of a course, navigate to the overview page of a course in your browser and copy the `cid` parameter from the URL Bar.
+The `sync_only` parameter is optional and allows you to sync only the specified subdirectories.
 
 ## Usage
 ### Running studip-sync manually
