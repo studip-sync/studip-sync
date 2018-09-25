@@ -42,9 +42,7 @@ class Session(object):
 
     def __init__(self):
         super(Session, self).__init__()
-
         self.session = requests.Session()
-        self.csrf_token = ""
 
     def __enter__(self):
         return self
@@ -73,7 +71,6 @@ class Session(object):
         with self.session.post(URL.studip_main(), data=saml_data) as response:
             if not response.ok:
                 raise LoginError("Cannot access Stud.IP main page")
-            self.csrf_token = parsers.extract_csrf_token(response.text)
 
     def get_couses(self):
         with self.session.get(URL.courses()) as response:
@@ -89,10 +86,11 @@ class Session(object):
             if not response.ok:
                 raise DownloadError("Cannot access course files page")
             folder_id = parsers.extract_parent_folder_id(response.text)
+            csrf_token = parsers.extract_csrf_token(response.text)
 
         download_url = URL.bulk_download(folder_id)
         data = {
-            "security_token": self.csrf_token,
+            "security_token": csrf_token,
             # "parent_folder_id": folder_id,
             "ids[]": sync_only or folder_id,
             "download": 1
