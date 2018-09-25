@@ -22,23 +22,21 @@ class ConfigCreator(object):
     def new_config(self):
         username = input("Username: ")
         password = getpass.getpass()
-        self._session.login(username, password)
-
-        courses = list(self._session.get_couses())
+        save_password = input("Save password (in clear text)? [y/N]: ").lower() in ("y", "yes")
         destination = input("Sync to directory: ")
-        save_login = input("Save username and password? [y/N]: ").lower() in ("y", "yes")
+
+        self._session.login(username, password)
+        courses = list(self._session.get_couses())
 
         config = {}
         config["courses"] = courses
+        config["user"] = {"login": username}
+
+        if save_password:
+            config["user"]["password"] = password
 
         if destination:
             config["destination"] = destination
-
-        if save_login:
-            config["user"] = {
-                "login":  username,
-                "password": password
-            }
 
         path = CONFIG_PATH
         os.makedirs(os.path.dirname(path), exist_ok=True)

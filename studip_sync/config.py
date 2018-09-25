@@ -54,22 +54,17 @@ class Config(object):
         if self._username:
             return self._username
 
-        if self.args.interactive:
-            self._username = input("Username: ")
-            return self._username
+        self._username = self.user_property("login") or input("Username: ")
+        return self._username
 
-        return self.user_property("login")
 
     @property
     def password(self):
         if self._password:
             return self._password
 
-        if self.args.interactive:
-            self._password = getpass.getpass()
-            return self._password
-
-        return self.user_property("password")
+        self._password = self.user_property("password") or getpass.getpass()
+        return self._password
 
     @property
     def courses(self):

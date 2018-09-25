@@ -14,7 +14,7 @@ Note that studip-sync currently only works at the University of Passau.
 3. `sudo snap connect studip-sync:home`
 
 **Important Note**: If you install studip-sync as a snap, you cannot use `~` to reference your home directory in the
-config file. If you ignore this note, the files will be synced to the `snap/studip-sync/current/...`
+config file. If you ignore this note, the files will be synced to `snap/studip-sync/current/...`
 
 **Limitation**: The snap can only write to non-hidden directories in you home directory. If you omit Step 3, it cannot
 write to your home directory at all.
@@ -33,7 +33,7 @@ studip-sync --init
 ```
 Next, review the generated configuration file (its path is printed in the last line of above command).
 
-**Note**: You can create subdirectories (e.g. for lectures and exercises) by using slashes (`/`) in `save_as`.
+**Hint**: You can create subdirectories (e.g. for lectures and exercises) by using slashes (`/`) in `save_as`.
 
 ### Example
 
@@ -64,16 +64,17 @@ Next, review the generated configuration file (its path is printed in the last l
     ]
 }
 ```
-The `user` and `destination` options are optional, if you specify them on the commandline. To find out the `course_id`
-of a course, navigate to the overview page of a course in your browser and copy the `cid` parameter from the URL Bar.
+The `destination` option is optional, if you specify it on the commandline.
+If you omit the `login` or `password`, studip-sync will ask for them interactively.
+To find the `course_id` of a course, navigate to the overview page of a course in your browser and copy the `cid` parameter from the URL Bar.
 The `sync_only` parameter is optional and allows you to sync only the specified subdirectories.
 
 ## Usage
 ### Running studip-sync manually
 ```shell
-# Reads login info from stdin and synchronizes files to /path/to/sync/dir
+# Synchronizes files to /path/to/sync/dir
 # and uses a non-default location for the config file
-studip-sync -i -c ./config.json /path/to/sync/dir
+studip-sync -c ./config.json /path/to/sync/dir
 
 # Reads all parameters from ~/.config/studip-sync/config.json
 studip-sync
