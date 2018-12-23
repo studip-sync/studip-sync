@@ -5,6 +5,7 @@ description: |
   Download and synchronize files from Stud.IP -- the campus management
   platform deployed at several German universities. Note that studip-sync
   currently only works at the University of Passau.
+architectures: [amd64, i386, armhf, arm64]
 
 grade: devel
 confinement: strict
