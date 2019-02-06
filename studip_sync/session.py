@@ -43,6 +43,7 @@ class Session(object):
     def __init__(self):
         super(Session, self).__init__()
         self.session = requests.Session()
+        self.session.headers.update({"User-Agent": "WeWantFileSync"})
 
     def __enter__(self):
         return self
