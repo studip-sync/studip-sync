@@ -26,7 +26,7 @@ class ConfigCreator(object):
         destination = input("Sync to directory: ")
 
         self._session.login(username, password)
-        courses = list(self._session.get_couses())
+        courses = list(self._session.get_courses())
 
         config = {}
         config["courses"] = courses

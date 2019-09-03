@@ -7,31 +7,31 @@ class ParserError(Exception):
     pass
 
 
-def extract_sso_url(html):
+def extract_login_data(html):
     soup = BeautifulSoup(html, 'lxml')
+
+    response = {}
 
     for form in soup.find_all('form'):
         if 'action' in form.attrs:
-            return form.attrs['action']
+            response['action'] = form.attrs['action']
+            response['params'] = {}
 
-    raise ParserError("Could not find login form")
+            needed_vars = [
+                'security_token',
+                'login_ticket',
+                'resolution',
+                'device_pixel_ratio'
+            ]
 
+            for form_input in form.find_all('input'):
+                if 'name' in form_input.attrs and form_input.attrs['name'] in needed_vars:
+                    if 'value' in form_input.attrs:
+                        response['params'][form_input.attrs['name']] = form_input.attrs['value']
+                    else:
+                        response['params'][form_input.attrs['name']] = ''
 
-def extract_saml_data(html):
-    soup = BeautifulSoup(html, 'lxml')
-
-    def _extract_value(name):
-        names = soup.find_all(attrs={"name": name})
-
-        if len(names) != 1:
-            raise ParserError("Could not parse SAML form")
-
-        return names.pop().attrs.get("value", "")
-
-    return {
-        "RelayState": _extract_value("RelayState"),
-        "SAMLResponse": _extract_value("SAMLResponse")
-    }
+            return response
 
 
 def extract_parent_folder_id(html):
@@ -57,7 +57,7 @@ def extract_csrf_token(html):
 def extract_courses(html):
     soup = BeautifulSoup(html, 'lxml')
     matcher = re.compile(
-        r"https://studip.uni-passau.de/studip/seminar_main.php\?auswahl=[0-9a-f]*$")
+        r"https://studip.uni-goettingen.de/seminar_main.php\?auswahl=[0-9a-f]*$")
     links = soup.find_all("a", href=matcher)
 
     for link in links:
