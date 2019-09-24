@@ -40,8 +40,8 @@ class Config(object):
         if not self.password:
             raise ConfigError("Password is missing")
 
-        if not self.courses:
-            raise ConfigError("No courses are available. Add courses to your config file!")
+        #if not self.courses:
+        #    raise ConfigError("No courses are available. Add courses to your config file!")
 
     def user_property(self, prop):
         user = self.config.get("user")
@@ -66,9 +66,9 @@ class Config(object):
         self._password = self.user_property("password") or getpass.getpass()
         return self._password
 
-    @property
-    def courses(self):
-        return self.config.get("courses")
+    #@property
+    #def courses(self):
+    #    return self.config.get("courses")
 
     @property
     def target(self):

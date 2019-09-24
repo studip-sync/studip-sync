@@ -40,8 +40,16 @@ class StudipSync(object):
                 print("Login failed!")
                 return 1
 
+            print("Downloading courses...")
+            courses = []
+            try:
+                courses = list(session.get_courses())
+            except (LoginError, ParserError):
+                print("Downloading courses failed!")
+                return 1
+
             status_code = 0
-            for course in CONFIG.courses:
+            for course in courses:
                 print("Downloading '{}'...".format(course["save_as"]), end="", flush=True)
                 try:
                     zip_location = session.download(

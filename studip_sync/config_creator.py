@@ -26,10 +26,10 @@ class ConfigCreator(object):
         destination = input("Sync to directory: ")
 
         self._session.login(username, password)
-        courses = list(self._session.get_courses())
+        #courses = list(self._session.get_courses())
 
         config = {}
-        config["courses"] = courses
+        #config["courses"] = courses
         config["user"] = {"login": username}
 
         if save_password:
