@@ -1,26 +1,14 @@
 # studip-sync (Fork)
 
-[![Snap Status](https://build.snapcraft.io/badge/woefe/studip-sync.svg)](https://build.snapcraft.io/user/woefe/studip-sync)
-
 Download and synchronize files from Stud.IP -- the campus management platform deployed at several German universities.
-Note that this fork currently only works at the University of Göttingen.
+Note that this fork currently only works at the *University of Göttingen*.
 
 ## Installation
 
-### Installation as snap
-
-1. If not yet installed, [install snapd](https://docs.snapcraft.io/core/install)
-2. `sudo snap install --edge studip-sync`
-3. `sudo snap connect studip-sync:home`
-
-**Important Note**: If you install studip-sync as a snap, you cannot use `~` to reference your home directory in the
-config file. If you ignore this note, the files will be synced to `snap/studip-sync/current/...`
-
-**Limitation**: The snap can only write to non-hidden directories in you home directory. If you omit Step 3, it cannot
-write to your home directory at all.
-
-### Installation on Arch Linux
-Install [studip-sync-git](https://aur.archlinux.org/packages/studip-sync-git/) from the AUR.
+1. `git clone https://github.com/lenke182/studip-sync`
+2. Install all needed dependencies
+3. Run `./studip_sync.py --init` (see Configuration)
+4. Schedule a cron job or manually run `./studip_sync.py` to sync your data.
 
 ## Configuration
 
@@ -29,7 +17,7 @@ in Stud.IP. So make sure that the subcategories you want to include are expanded
 selected.
 
 ```shell
-studip-sync --init
+./studip_sync.py --init
 ```
 Next, review the generated configuration file (its path is printed in the last line of above command).
 
@@ -70,19 +58,29 @@ To find the `course_id` of a course, navigate to the overview page of a course i
 The `sync_only` parameter is optional and allows you to sync only the specified subdirectories.
 
 ## Usage
+
+### Full sync instead of incremental sync
+
+StudIP-Sync check if new files have been edited since the last sync to limit the data which needs to be downloaded on every sync.
+If you don't want this happen and prefer to always download all data, use:
+```shell
+./studip_sync.py --full
+```
+
+
 ### Running studip-sync manually
 ```shell
 # Synchronizes files to /path/to/sync/dir
 # and uses a non-default location for the config file
-studip-sync -c ./config.json /path/to/sync/dir
+./studip_sync.py -c ./config.json /path/to/sync/dir
 
 # Reads all parameters from ~/.config/studip-sync/config.json
-studip-sync
+./studip_sync.py
 ```
 
 ### Automation using a cron job
 Run `crontab -e` and add the following lines:
 ```
 # Run at 8:00, 13:00 and 19:00 every day.
-0 8,13,19 * * *  studip-sync
+0 8,13,19 * * *  /path/to/studip-sync/studip_sync.py
 ```
