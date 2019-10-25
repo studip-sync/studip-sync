@@ -61,7 +61,7 @@ The `sync_only` parameter is optional and allows you to sync only the specified 
 
 ### Full sync instead of incremental sync
 
-StudIP-Sync check if new files have been edited since the last sync to limit the data which needs to be downloaded on every sync.
+studip-sync checks if new files have been edited since the last sync to limit the data which needs to be downloaded on every sync.
 If you don't want this happen and prefer to always download all data, use:
 ```shell
 ./studip_sync.py --full
