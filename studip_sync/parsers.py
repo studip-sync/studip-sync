@@ -34,6 +34,28 @@ def extract_login_data(html):
             return response
 
 
+def extract_files_flat_last_edit(html):
+    soup = BeautifulSoup(html, 'lxml')
+
+    for form in soup.find_all('form'):
+        if 'action' in form.attrs:
+            tds = form.find('table').find('tbody').find_all('tr')[0].find_all('td')
+            if len(tds) == 8:
+                td = tds[6]
+                if 'data-sort-value' in td.attrs:
+                    try:
+                        return int(td.attrs['data-sort-value'])
+                    except:
+                        raise ParserError("last_edit: Couldn't convert data-sort-value to int")
+                else:
+                    raise ParserError("last_edit: Couldn't find td object with data-sort-value")
+            elif len(tds) == 1 and "Keine Dateien vorhanden." in str(tds[0]):
+                return 0 #No files, so no information when was the last time a file was edited
+            else:
+                raise ParserError("last_edit: row doesn't have expected length of cells")
+    return 0
+
+
 def extract_parent_folder_id(html):
     soup = BeautifulSoup(html, 'lxml')
     folder_ids = soup.find_all(attrs={"name": "parent_folder_id"})

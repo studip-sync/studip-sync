@@ -1,6 +1,7 @@
 import json
 import os
 import getpass
+from studip_sync.config_creator import ConfigCreator
 from studip_sync.arg_parser import ARGS
 from studip_sync import CONFIG_PATH
 
@@ -42,6 +43,19 @@ class Config(object):
 
         #if not self.courses:
         #    raise ConfigError("No courses are available. Add courses to your config file!")
+
+    @property
+    def last_sync(self):
+        last_sync = self.config.get("last_sync")
+        if last_sync:
+            return last_sync
+        else:
+            return 0
+
+    def update_last_sync(self, last_sync):
+        new_config = self.config
+        new_config["last_sync"] = last_sync
+        ConfigCreator.replace_config(new_config)
 
     def user_property(self, prop):
         user = self.config.get("user")

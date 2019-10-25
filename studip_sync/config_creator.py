@@ -43,3 +43,12 @@ class ConfigCreator(object):
         with open(path, "w") as config_file:
             print("Writing new config to '{}'".format(path))
             json.dump(config, config_file, ensure_ascii=False, indent=4)
+
+    @staticmethod
+    def replace_config(config):
+        path = CONFIG_PATH
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as config_file:
+            print("Replacing config at '{}'".format(path))
+            json.dump(config, config_file, ensure_ascii=False, indent=4)
+

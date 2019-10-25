@@ -2,6 +2,7 @@ import os
 import shutil
 import requests
 from studip_sync import parsers
+import time
 
 
 class SessionError(Exception):
@@ -24,6 +25,10 @@ class URL(object):
     @staticmethod
     def files_main():
         return "https://studip.uni-goettingen.de/dispatch.php/course/files"
+
+    @staticmethod
+    def files_flat():
+        return "https://studip.uni-goettingen.de/dispatch.php/course/files/flat"
 
     @staticmethod
     def bulk_download(folder_id):
@@ -81,6 +86,20 @@ class Session(object):
                 raise SessionError("Failed to get courses")
 
             return parsers.extract_courses(response.text)
+
+    def check_course_new_files(self, course_id, last_sync):
+        params = {"cid": course_id}
+
+        with self.session.get(URL.files_flat(), params=params) as response:
+            if not response.ok:
+                raise DownloadError("Cannot access course files_flat page")
+            last_edit = parsers.extract_files_flat_last_edit(response.text)
+        
+        if last_edit == 0:
+            print("\tLast file edit couldn't be detected!")
+        else:
+            print("\tLast file edit: {}".format(time.strftime("%d.%m.%Y %H:%M", time.gmtime(last_edit))))
+        return last_edit == 0 or last_edit > last_sync
 
     def download(self, course_id, workdir, sync_only=None):
         params = {"cid": course_id}

@@ -4,6 +4,7 @@ import tempfile
 import zipfile
 import glob
 import subprocess
+import time
 from datetime import datetime
 
 from studip_sync.config import CONFIG
@@ -28,7 +29,7 @@ class StudipSync(object):
         os.makedirs(self.extract_dir)
         os.makedirs(self.destination_dir, exist_ok=True)
 
-    def sync(self):
+    def sync(self, sync_fully=False):
         extractor = Extractor(self.extract_dir)
         rsync = RsyncWrapper()
 
@@ -40,32 +41,38 @@ class StudipSync(object):
                 print("Login failed!")
                 return 1
 
-            print("Downloading courses...")
+            print("Downloading course list...")
             courses = []
             try:
                 courses = list(session.get_courses())
             except (LoginError, ParserError):
-                print("Downloading courses failed!")
+                print("Downloading course list failed!")
                 return 1
 
             status_code = 0
-            for course in courses:
-                print("Downloading '{}'...".format(course["save_as"]), end="", flush=True)
+            for i in range(0, len(courses)):
+                course = courses[i]
+                print("{}) {}".format(i+1, course["save_as"]))
                 try:
-                    zip_location = session.download(
-                        course["course_id"], self.download_dir, course.get("sync_only"))
-                    extractor.extract(zip_location, course["save_as"])
+                    if sync_fully or session.check_course_new_files(course["course_id"], CONFIG.last_sync):
+                        print("\tDownloading files...")
+                        zip_location = session.download(
+                            course["course_id"], self.download_dir, course.get("sync_only"))
+                        extractor.extract(zip_location, course["save_as"])
+                    else:
+                        print("\tSkipping this course...")
                 except DownloadError:
-                    print(" Download FAILED!", end="")
+                    print(" Download FAILED!")
                     status_code = 2
                 except ExtractionError:
-                    print(" Extracting FAILED!", end="")
+                    print(" Extracting FAILED!")
                     status_code = 2
-                finally:
-                    print()
 
         print("Synchronizing with existing files...")
         rsync.sync(self.extract_dir + "/", self.destination_dir)
+
+        CONFIG.update_last_sync(int(time.time()))
+
         return status_code
 
     def cleanup(self):
@@ -88,7 +95,7 @@ class RsyncWrapper(object):
 
     def sync(self, source, destination):
         subprocess.call(["rsync", "--recursive", "--checksum", "--backup",
-                         "--suffix=" + self.suffix, source, destination])
+                         "--suffix=" + self.suffix, source, destination], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 
 class Extractor(object):

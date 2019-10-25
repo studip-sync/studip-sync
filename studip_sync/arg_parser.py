@@ -14,6 +14,9 @@ def parse_args():
     parser.add_argument("--init", action="store_true",
                         help="create new config file interactively")
 
+    parser.add_argument("--full", action="store_true", help="downloads all courses interally instead of incrementally")
+
+
     return parser.parse_args()
 
 
