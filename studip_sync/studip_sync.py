@@ -37,16 +37,18 @@ class StudipSync(object):
             print("Logging in...")
             try:
                 session.login(CONFIG.username, CONFIG.password)
-            except (LoginError, ParserError):
+            except (LoginError, ParserError) as e:
                 print("Login failed!")
+                print(e)
                 return 1
 
             print("Downloading course list...")
             courses = []
             try:
                 courses = list(session.get_courses())
-            except (LoginError, ParserError):
+            except (LoginError, ParserError) as e:
                 print("Downloading course list failed!")
+                print(e)
                 return 1
 
             status_code = 0
@@ -61,17 +63,23 @@ class StudipSync(object):
                         extractor.extract(zip_location, course["save_as"])
                     else:
                         print("\tSkipping this course...")
-                except DownloadError:
-                    print(" Download FAILED!")
+                except DownloadError as e:
+                    print("\tDownload FAILED!")
+                    print("\t" + str(e))
                     status_code = 2
-                except ExtractionError:
-                    print(" Extracting FAILED!")
+                except ExtractionError as e:
+                    print("\tExtracting FAILED!")
+                    print("\t" + str(e))
                     status_code = 2
 
         print("Synchronizing with existing files...")
         rsync.sync(self.extract_dir + "/", self.destination_dir)
 
         CONFIG.update_last_sync(int(time.time()))
+
+        wait_time = 5
+        print("Waiting {} seconds...".format(wait_time))
+        time.sleep(wait_time)
 
         return status_code
 
@@ -94,8 +102,8 @@ class RsyncWrapper(object):
         self.suffix = "_" + timestr + ".old"
 
     def sync(self, source, destination):
-        subprocess.call(["rsync", "--recursive", "--checksum", "--backup",
-                         "--suffix=" + self.suffix, source, destination], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        subprocess.call(["rsync", "--recursive", "--checksum", "--backup", "-v",
+                         "--suffix=" + self.suffix, source, destination])
 
 
 class Extractor(object):
