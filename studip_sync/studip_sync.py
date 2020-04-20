@@ -23,11 +23,13 @@ class StudipSync(object):
         self.workdir = tempfile.mkdtemp(prefix="studip-sync")
         self.download_dir = os.path.join(self.workdir, "zips")
         self.extract_dir = os.path.join(self.workdir, "extracted")
-        self.destination_dir = CONFIG.target
+        self.files_destination_dir = CONFIG.files_destination
+        self.media_destination_dir = CONFIG.media_destination
 
         os.makedirs(self.download_dir)
         os.makedirs(self.extract_dir)
-        os.makedirs(self.destination_dir, exist_ok=True)
+        os.makedirs(self.files_destination_dir, exist_ok=True)
+        os.makedirs(self.media_destination_dir, exist_ok=True)
 
     def sync(self, sync_fully=False):
         extractor = Extractor(self.extract_dir)
@@ -55,6 +57,8 @@ class StudipSync(object):
             for i in range(0, len(courses)):
                 course = courses[i]
                 print("{}) {}".format(i+1, course["save_as"]))
+                
+                #Try downloading media files
                 try:
                     if sync_fully or session.check_course_new_files(course["course_id"], CONFIG.last_sync):
                         print("\tDownloading files...")
@@ -64,16 +68,29 @@ class StudipSync(object):
                     else:
                         print("\tSkipping this course...")
                 except DownloadError as e:
-                    print("\tDownload FAILED!")
+                    print("\tDownload of files FAILED!")
                     print("\t" + str(e))
                     status_code = 2
                 except ExtractionError as e:
-                    print("\tExtracting FAILED!")
+                    print("\tExtracting files FAILED!")
                     print("\t" + str(e))
                     status_code = 2
 
+                if self.media_destination_dir:
+                    try:
+                        print("\tSyncing media files...")
+
+                        media_course_dir = os.path.join(self.media_destination_dir, course["save_as"])
+
+                        session.download_media(course["course_id"], media_course_dir)
+                    except DownloadError as e:
+                        print("\tDownload of media FAILED!")
+                        print("\t" + str(e))
+                        status_code = 2
+
+
         print("Synchronizing with existing files...")
-        rsync.sync(self.extract_dir + "/", self.destination_dir)
+        rsync.sync(self.extract_dir + "/", self.files_destination_dir)
 
         CONFIG.update_last_sync(int(time.time()))
 

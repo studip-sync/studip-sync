@@ -23,7 +23,8 @@ class ConfigCreator(object):
         username = input("Username: ")
         password = getpass.getpass()
         save_password = input("Save password (in clear text)? [y/N]: ").lower() in ("y", "yes")
-        destination = input("Sync to directory: ")
+        files_destination = input("Sync files to directory: ")
+        media_destination = input("Sync media to directory: ")
 
         self._session.login(username, password)
         #courses = list(self._session.get_courses())
@@ -35,8 +36,11 @@ class ConfigCreator(object):
         if save_password:
             config["user"]["password"] = password
 
-        if destination:
-            config["destination"] = destination
+        if files_destination:
+            config["files_destination"] = files_destination
+
+        if media_destination:
+            config["media_destination"] = media_destination
 
         path = CONFIG_PATH
         os.makedirs(os.path.dirname(path), exist_ok=True)

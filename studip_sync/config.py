@@ -31,7 +31,7 @@ class Config(object):
         self._check()
 
     def _check(self):
-        if not self.target:
+        if not self.files_destination:
             raise ConfigError("Target directory is missing. You can specify the target directory "
                               "via the commandline or the JSON config file!")
 
@@ -85,13 +85,17 @@ class Config(object):
     #    return self.config.get("courses")
 
     @property
-    def target(self):
+    def files_destination(self):
         if self.args.destination:
-            destination = self.args.destination
+            files_destination = self.args.destination
         else:
-            destination = self.config.get("destination", "")
+            files_destination = self.config.get("files_destination", "")
 
-        return os.path.expanduser(destination)
+        return os.path.expanduser(files_destination)
+
+    @property
+    def media_destination(self):
+        return os.path.expanduser(self.config.get("media_destination", ""))
 
 
 try:

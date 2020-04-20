@@ -1,6 +1,7 @@
 import re
 import urllib
 from bs4 import BeautifulSoup
+import cgi
 
 
 class ParserError(Exception):
@@ -94,3 +95,69 @@ def extract_courses(html):
             "course_id": course_id,
             "save_as": save_as
         }
+
+
+def extract_media_list(html):
+    soup = BeautifulSoup(html, 'lxml')
+
+    media_files = []
+
+    for table in soup.find_all("table", class_="media-table"):
+        if not "id" in table.attrs:
+            raise ParserError("media_list: 'id' is missing from table")
+
+        media_hash = table["id"]
+
+        a_element = table.select_one("div.overlay-curtain > a")
+
+        if not a_element:
+            raise ParserError("media_list: a_element is missing")
+
+        if not "href" in a_element.attrs:
+            raise ParserError("media_list: 'href' is missing from a_element")
+
+        media_url = a_element["href"]
+
+        if not media_hash or not media_url:
+            raise ParserError("media_list: hash or url is empty")
+
+        media_files.append((media_hash, media_url))
+
+    return media_files
+
+def extract_media_best_download_link(html):
+    soup = BeautifulSoup(html, 'lxml')
+
+    download_options = soup.select("table#dllist tr td")
+
+    if not download_options or len(download_options) <= 1:
+        raise ParserError("media_download_link: No download options found")
+
+    #Always select the first result as the best result
+    #(skip first "Download" td, so instead of 0 select 1)
+
+    download_td = download_options[1]
+
+    download_a = download_td.find("a")
+
+    if not "href" in download_a.attrs:
+        raise ParserError("media_download_link: href is missing from download_a")
+
+    return download_a["href"]
+
+
+def extract_filename_from_headers(headers):
+    if not "Content-Disposition" in headers:
+        raise ParserError("media_filename_headers: \"Content-Disposition\" is missing: " + media_hash)
+    
+    content_disposition = headers["Content-Disposition"]
+
+    header_value, header_params = cgi.parse_header(content_disposition)
+
+    if not "filename" in header_params:
+        raise ParserError("media_filename_headers: \"filename\" is missing: " + media_hash)
+
+    if header_params["filename"] == "":
+        raise ParserError("media_filename_headers: filename value is empty: " + media_hash)
+
+    return header_params["filename"]
