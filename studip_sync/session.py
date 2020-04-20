@@ -72,7 +72,7 @@ class Session(object):
         with self.session.post(login_data['action'], data=login_params) as response:
             if not response.ok:
                 raise LoginError("Cannot post login data")
-            elif "Fehler" in response.text:
+            elif "messagebox_error" in response.text:
                 raise LoginError("Wrong credentials, cannot login")
 
         #Test if logged in
