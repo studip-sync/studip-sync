@@ -28,8 +28,10 @@ class StudipSync(object):
 
         os.makedirs(self.download_dir)
         os.makedirs(self.extract_dir)
-        os.makedirs(self.files_destination_dir, exist_ok=True)
-        os.makedirs(self.media_destination_dir, exist_ok=True)
+        if self.files_destination_dir:
+            os.makedirs(self.files_destination_dir, exist_ok=True)
+        if self.media_destination_dir:
+            os.makedirs(self.media_destination_dir, exist_ok=True)
 
     def sync(self, sync_fully=False):
         extractor = Extractor(self.extract_dir)
@@ -58,23 +60,23 @@ class StudipSync(object):
                 course = courses[i]
                 print("{}) {}".format(i+1, course["save_as"]))
                 
-                #Try downloading media files
-                try:
-                    if sync_fully or session.check_course_new_files(course["course_id"], CONFIG.last_sync):
-                        print("\tDownloading files...")
-                        zip_location = session.download(
-                            course["course_id"], self.download_dir, course.get("sync_only"))
-                        extractor.extract(zip_location, course["save_as"])
-                    else:
-                        print("\tSkipping this course...")
-                except DownloadError as e:
-                    print("\tDownload of files FAILED!")
-                    print("\t" + str(e))
-                    status_code = 2
-                except ExtractionError as e:
-                    print("\tExtracting files FAILED!")
-                    print("\t" + str(e))
-                    status_code = 2
+                if self.files_destination_dir:
+                    try:
+                        if sync_fully or session.check_course_new_files(course["course_id"], CONFIG.last_sync):
+                            print("\tDownloading files...")
+                            zip_location = session.download(
+                                course["course_id"], self.download_dir, course.get("sync_only"))
+                            extractor.extract(zip_location, course["save_as"])
+                        else:
+                            print("\tSkipping this course...")
+                    except DownloadError as e:
+                        print("\tDownload of files FAILED!")
+                        print("\t" + str(e))
+                        status_code = 2
+                    except ExtractionError as e:
+                        print("\tExtracting files FAILED!")
+                        print("\t" + str(e))
+                        status_code = 2
 
                 if self.media_destination_dir:
                     try:

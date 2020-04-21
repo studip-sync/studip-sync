@@ -1,4 +1,3 @@
-import readline
 import getpass
 import json
 import os
