@@ -36,7 +36,7 @@ To create a new configuration file execute:
 
 ```
 
-The `files_destination` and `media_destination` option are optional. If you omit one of them, the corresponding feature is disabled. You can also specify both options on the commandline.
+The `files_destination` and `media_destination` option are optional. If you omit one of them, the corresponding feature is disabled. You can also specify both options on the commandline. (Using `-d` implies automatically `--full` if no config is present)
 If you omit the `login` or `password`, studip-sync will ask for them interactively.
 
 ## Usage

@@ -9,7 +9,7 @@ def parse_args():
                         "'~/.config/studip-sync/config.json')")
 
     parser.add_argument("-d", "--destination", nargs="?", metavar="DIR", default=None,
-                        help="synchronize files to the given destination directory")
+                        help="synchronize files to the given destination directory (If no config is present this argument implies --full)")
 
     parser.add_argument("-m", "--media", nargs="?", metavar="DIR", default=None,
                         help="synchronize media to the given destination directory")
@@ -17,7 +17,7 @@ def parse_args():
     parser.add_argument("--init", action="store_true",
                         help="create new config file interactively")
 
-    parser.add_argument("--full", action="store_true", help="downloads all courses interally instead of incrementally")
+    parser.add_argument("--full", action="store_true", help="downloads all courses entirely instead of incrementally")
 
 
     return parser.parse_args()
