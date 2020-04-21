@@ -181,7 +181,8 @@ class Session(object):
 
             with self.session.get(download_media_url, stream=True) as response:
                 if not response.ok:
-                    raise ParserError("Cannot download media file: " + media_hash)
+                    print("\t\tCannot download media file: " + str(response))
+                    continue
                 
                 media_filename = parsers.extract_filename_from_headers(response.headers)
 
