@@ -22,8 +22,8 @@ class ConfigCreator(object):
         username = input("Username: ")
         password = getpass.getpass()
         save_password = input("Save password (in clear text)? [y/N]: ").lower() in ("y", "yes")
-        files_destination = input("Sync files to directory: ")
-        media_destination = input("Sync media to directory: ")
+        files_destination = input("Sync files to directory (leave empty to disable): ")
+        media_destination = input("Sync media to directory (leave empty to disable): ")
 
         self._session.login(username, password)
         #courses = list(self._session.get_courses())

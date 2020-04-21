@@ -70,12 +70,10 @@ class StudipSync(object):
                         else:
                             print("\tSkipping this course...")
                     except DownloadError as e:
-                        print("\tDownload of files FAILED!")
-                        print("\t" + str(e))
+                        print("\tDownload of files failed: " + str(e))
                         status_code = 2
                     except ExtractionError as e:
-                        print("\tExtracting files FAILED!")
-                        print("\t" + str(e))
+                        print("\tExtracting files failed: " + str(e))
                         status_code = 2
 
                 if self.media_destination_dir:
@@ -86,19 +84,19 @@ class StudipSync(object):
 
                         session.download_media(course["course_id"], media_course_dir)
                     except DownloadError as e:
-                        print("\tDownload of media FAILED!")
-                        print("\t" + str(e))
+                        print("\tDownload of media failed: " + str(e))
                         status_code = 2
 
 
-        print("Synchronizing with existing files...")
-        rsync.sync(self.extract_dir + "/", self.files_destination_dir)
+        if self.files_destination_dir:
+            print("Synchronizing with existing files...")
+            rsync.sync(self.extract_dir + "/", self.files_destination_dir)
 
-        CONFIG.update_last_sync(int(time.time()))
+            CONFIG.update_last_sync(int(time.time()))
 
-        wait_time = 5
-        print("Waiting {} seconds...".format(wait_time))
-        time.sleep(wait_time)
+            wait_time = 5
+            print("Waiting {} seconds...".format(wait_time))
+            time.sleep(wait_time)
 
         return status_code
 
