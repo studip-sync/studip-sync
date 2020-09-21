@@ -86,12 +86,12 @@ class Session(object):
             if not response.ok or not "Veranstaltungen" in response.text:
                 raise LoginError("Cannot access Stud.IP main page")
 
-    def get_courses(self):
+    def get_courses(self, only_recent_semester=False):
         with self.session.get(URL.courses()) as response:
             if not response.ok:
                 raise SessionError("Failed to get courses")
 
-            return parsers.extract_courses(response.text)
+            return parsers.extract_courses(response.text, only_recent_semester)
 
     def check_course_new_files(self, course_id, last_sync):
         params = {"cid": course_id}

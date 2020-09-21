@@ -102,7 +102,7 @@ class Config(object):
 
     @property
     def files_destination(self):
-        if self.args.destination:
+        if not self.args.destination == None:
             files_destination = self.args.destination
         else:
             if not self.config:
@@ -114,7 +114,7 @@ class Config(object):
 
     @property
     def media_destination(self):
-        if self.args.media:
+        if not self.args.media == None:
             media_destination = self.args.media
         else:
             if not self.config:

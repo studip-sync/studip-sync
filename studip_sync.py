@@ -11,5 +11,5 @@ if ARGS.init:
 
 from studip_sync.studip_sync import StudipSync
 with StudipSync() as s:
-    exit(s.sync(ARGS.full))
+	exit(s.sync(ARGS.full, ARGS.recent))
 
