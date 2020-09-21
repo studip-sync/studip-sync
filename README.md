@@ -49,6 +49,13 @@ If you don't want this happen and prefer to always download all data, use:
 ./studip_sync.py --full
 ```
 
+### Only sync the last semester
+
+To sync only the last semester and skip older courses, use the `--recent` flag. (This option will be ignored if `--full` is supplied).
+```shell
+./studip_sync.py --recent
+```
+
 ### Running studip-sync manually
 ```shell
 # Synchronizes files to /path/to/sync/dir
