@@ -2,6 +2,7 @@ import re
 import urllib
 from bs4 import BeautifulSoup
 import cgi
+import json
 
 
 class ParserError(Exception):
@@ -38,23 +39,25 @@ def extract_login_data(html):
 def extract_files_flat_last_edit(html):
     soup = BeautifulSoup(html, 'lxml')
 
-    for form in soup.find_all('form'):
-        if 'action' in form.attrs:
-            tds = form.find('table').find('tbody').find_all('tr')[0].find_all('td')
-            if len(tds) == 8:
-                td = tds[6]
-                if 'data-sort-value' in td.attrs:
-                    try:
-                        return int(td.attrs['data-sort-value'])
-                    except:
-                        raise ParserError("last_edit: Couldn't convert data-sort-value to int")
-                else:
-                    raise ParserError("last_edit: Couldn't find td object with data-sort-value")
-            elif len(tds) == 1 and "Keine Dateien vorhanden." in str(tds[0]):
-                return 0 #No files, so no information when was the last time a file was edited
+    form = soup.find('form', id="files_table_form")
+
+    if "data-files" in form.attrs:
+        form_data_files = json.loads(form["data-files"])
+
+        file_timestamps = []
+
+        for file_data in form_data_files:
+            if "chdate" in file_data:
+                file_timestamps.append(file_data["chdate"])
             else:
-                raise ParserError("last_edit: row doesn't have expected length of cells")
-    return 0
+                raise ParserError("last_edit: No chdate: " + str(file_data.keys()))
+
+        if len(file_timestamps) > 0:
+            return max(file_timestamps)
+        else:
+            return 0
+    else:
+        raise ParserError("last_edit: Missing data-files attribute in form")
 
 
 def extract_parent_folder_id(html):
