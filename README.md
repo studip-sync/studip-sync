@@ -1,3 +1,10 @@
+⚠ **Looking for a new Maintainer** ⚠
+
+I'm not actively maintaining this repo anymore.
+If you are a student in Passau (or any other University that uses Stud.IP) and you want to continue maintaining studip-sync, I'd transfer the repo to you.
+In case you want to step in, let me know by creating an issue on this repo.
+
+---
 # studip-sync
 
 [![Snap Status](https://build.snapcraft.io/badge/woefe/studip-sync.svg)](https://build.snapcraft.io/user/woefe/studip-sync)
