@@ -1,4 +1,4 @@
-⚠ **Looking for a new Maintainer** ⚠
+⚠ **Looking for a new maintainer** ⚠
 
 I'm not actively maintaining this repo anymore.
 If you are a student in Passau (or any other University that uses Stud.IP) and you want to continue maintaining studip-sync, I'd transfer the repo to you.
