@@ -41,23 +41,40 @@ def extract_files_flat_last_edit(html):
 
     form = soup.find('form', id="files_table_form")
 
-    if "data-files" in form.attrs:
-        form_data_files = json.loads(form["data-files"])
-
-        file_timestamps = []
-
-        for file_data in form_data_files:
-            if "chdate" in file_data:
-                file_timestamps.append(file_data["chdate"])
-            else:
-                raise ParserError("last_edit: No chdate: " + str(file_data.keys()))
-
-        if len(file_timestamps) > 0:
-            return max(file_timestamps)
-        else:
-            return 0
-    else:
+    if not "data-files" in form.attrs:
         raise ParserError("last_edit: Missing data-files attribute in form")
+
+    form_data_files = json.loads(form["data-files"])
+
+    file_timestamps = []
+
+    for file_data in form_data_files:
+        if not "chdate" in file_data:
+            raise ParserError("last_edit: No chdate: " + str(file_data.keys()))
+
+        file_timestamps.append(file_data["chdate"])
+
+    if len(file_timestamps) > 0:
+        return max(file_timestamps)
+    else:
+        return 0
+
+
+def extract_files_index_data(html):
+    soup = BeautifulSoup(html, 'lxml')
+
+    form = soup.find('form', id="files_table_form")
+
+    if not "data-files" in form.attrs:
+        raise ParserError("index_data: Missing data-files attribute in form")
+
+    if not "data-folders" in form.attrs:
+        raise ParserError("index_data: Missing data-folders attribute in form")
+
+    form_data_files = json.loads(form["data-files"])
+    form_data_folders = json.loads(form["data-folders"])
+
+    return form_data_files, form_data_folders
 
 
 def extract_parent_folder_id(html):
@@ -86,7 +103,7 @@ def extract_courses(html, only_recent_semester):
     div = soup.find("div", id="my_seminars")
     tables = div.find_all("table")
 
-    for i in range(0,len(tables)):
+    for i in range(0, len(tables)):
         if only_recent_semester and i > 0:
             continue
 
@@ -141,6 +158,7 @@ def extract_media_list(html):
 
     return media_files
 
+
 def extract_media_best_download_link(html):
     soup = BeautifulSoup(html, 'lxml')
 
@@ -149,8 +167,8 @@ def extract_media_best_download_link(html):
     if not download_options or len(download_options) <= 1:
         raise ParserError("media_download_link: No download options found")
 
-    #Always select the first result as the best result
-    #(skip first "Download" td, so instead of 0 select 1)
+    # Always select the first result as the best result
+    # (skip first "Download" td, so instead of 0 select 1)
 
     download_td = download_options[1]
 
@@ -164,8 +182,9 @@ def extract_media_best_download_link(html):
 
 def extract_filename_from_headers(headers):
     if not "Content-Disposition" in headers:
-        raise ParserError("media_filename_headers: \"Content-Disposition\" is missing: " + media_hash)
-    
+        raise ParserError(
+            "media_filename_headers: \"Content-Disposition\" is missing: " + media_hash)
+
     content_disposition = headers["Content-Disposition"]
 
     header_value, header_params = cgi.parse_header(content_disposition)

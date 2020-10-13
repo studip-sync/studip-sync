@@ -34,9 +34,6 @@ class StudipSync(object):
             os.makedirs(self.media_destination_dir, exist_ok=True)
 
     def sync(self, sync_fully=False, sync_recent=False):
-        if sync_fully: # ignore --recent if --full is supplied
-            sync_recent = False
-
         extractor = Extractor(self.extract_dir)
         rsync = RsyncWrapper()
 
@@ -50,7 +47,7 @@ class StudipSync(object):
                 return 1
 
             print("Downloading course list...")
-            
+
             courses = []
             try:
                 courses = list(session.get_courses(sync_recent))
@@ -66,7 +63,7 @@ class StudipSync(object):
             for i in range(0, len(courses)):
                 course = courses[i]
                 print("{}) {}: {}".format(i+1, course["semester"], course["save_as"]))
-                
+
                 if self.files_destination_dir:
                     try:
                         if sync_fully or session.check_course_new_files(course["course_id"], CONFIG.last_sync):

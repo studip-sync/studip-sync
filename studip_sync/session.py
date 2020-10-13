@@ -1,8 +1,10 @@
 import os
 import shutil
-import requests
-from studip_sync import parsers
 import time
+
+import requests
+
+from studip_sync import parsers
 
 
 class SessionError(Exception):
@@ -14,6 +16,11 @@ class FileError(Exception):
 class LoginError(SessionError):
     pass
 
+class MissingFeatureError(Exception):
+    pass
+
+class MissingPermissionFolderError(Exception):
+    pass
 
 class DownloadError(SessionError):
     pass
@@ -27,6 +34,10 @@ class URL(object):
     @staticmethod
     def files_main():
         return "https://studip.uni-goettingen.de/dispatch.php/course/files"
+
+    @staticmethod
+    def files_index(folder_id):
+        return "https://studip.uni-goettingen.de/dispatch.php/course/files/index/{}".format(folder_id)
 
     @staticmethod
     def files_flat():
@@ -100,7 +111,7 @@ class Session(object):
             if not response.ok:
                 raise DownloadError("Cannot access course files_flat page")
             last_edit = parsers.extract_files_flat_last_edit(response.text)
-        
+
         if last_edit == 0:
             print("\tLast file edit couldn't be detected!")
         else:
@@ -132,6 +143,32 @@ class Session(object):
                 shutil.copyfileobj(response.raw, download_file)
                 return path
 
+    def download_file(self, download_url, tempfile):
+        with self.session.post(download_url, stream=True) as response:
+            if not response.ok:
+                raise DownloadError("Cannot download file")
+
+            with open(tempfile, "wb") as file:
+                shutil.copyfileobj(response.raw, file)
+
+    def get_files_index(self, course_id, folder_id=None):
+        params = {"cid": course_id}
+
+        if folder_id:
+            url = URL.files_index(folder_id)
+        else:
+            url = URL.files_main()
+
+        with self.session.get(url, params=params) as response:
+            if not response.ok:
+                if response.status_code == 403 and "Documents" in response.text:
+                    raise MissingFeatureError("This course has no files")
+                elif response.status_code == 403 and "Zugriff verweigert" in response.text:
+                    raise MissingPermissionFolderError("You are missing the required pemissions to view this folder")
+                else:
+                    raise DownloadError("Cannot access course files/files_index page")
+            return parsers.extract_files_index_data(response.text)
+
     def download_media(self, course_id, media_workdir):
         params = {"cid": course_id}
 
@@ -139,7 +176,10 @@ class Session(object):
 
         with self.session.get(mediacast_list_url, params=params) as response:
             if not response.ok:
-                raise DownloadError("Cannot access mediacast list page")
+                if response.status_code == 500 and "not found" in response.text:
+                    raise MissingFeatureError("This course has no media")
+                else:
+                    raise DownloadError("Cannot access mediacast list page")
 
             media_files = parsers.extract_media_list(response.text)
 
@@ -173,7 +213,7 @@ class Session(object):
             with self.session.get(media_player_url) as response:
                 if not response.ok:
                     raise DownloadError("Cannot access media file page: " + media_hash)
-        
+
                 download_media_url_relative = parsers.extract_media_best_download_link(response.text)
 
                 download_media_url = requests.compat.urljoin(media_player_url, download_media_url_relative)
@@ -183,7 +223,7 @@ class Session(object):
                 if not response.ok:
                     print("\t\tCannot download media file: " + str(response))
                     continue
-                
+
                 media_filename = parsers.extract_filename_from_headers(response.headers)
 
                 filename = media_hash + "-" + media_filename

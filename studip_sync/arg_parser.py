@@ -19,7 +19,7 @@ def parse_args():
 
     parser.add_argument("--full", action="store_true", help="downloads all courses entirely instead of incrementally")
 
-    parser.add_argument("--recent", action="store_true", help="only download the courses of the recent semester (if --full is supplied this option will be ignored)")
+    parser.add_argument("--recent", action="store_true", help="only download the courses of the recent semester")
 
 
     return parser.parse_args()
