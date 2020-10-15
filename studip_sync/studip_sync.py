@@ -8,7 +8,7 @@ import time
 from datetime import datetime
 
 from studip_sync.config import CONFIG
-from studip_sync.session import Session, DownloadError, LoginError
+from studip_sync.session import Session, DownloadError, LoginError, MissingFeatureError
 from studip_sync.parsers import ParserError
 
 
@@ -73,6 +73,9 @@ class StudipSync(object):
                             extractor.extract(zip_location, course["save_as"])
                         else:
                             print("\tSkipping this course...")
+                    except MissingFeatureError as e:
+                        # Ignore if there are no files
+                        pass
                     except DownloadError as e:
                         print("\tDownload of files failed: " + str(e))
                         status_code = 2
@@ -87,20 +90,19 @@ class StudipSync(object):
                         media_course_dir = os.path.join(self.media_destination_dir, course["save_as"])
 
                         session.download_media(course["course_id"], media_course_dir)
+                    except MissingFeatureError as e:
+                        # Ignore if there is no media
+                        pass
                     except DownloadError as e:
                         print("\tDownload of media failed: " + str(e))
                         status_code = 2
-
 
         if self.files_destination_dir:
             print("Synchronizing with existing files...")
             rsync.sync(self.extract_dir + "/", self.files_destination_dir)
 
-            CONFIG.update_last_sync(int(time.time()))
-
-            wait_time = 5
-            print("Waiting {} seconds...".format(wait_time))
-            time.sleep(wait_time)
+            if status_code == 0:
+                CONFIG.update_last_sync(int(time.time()))
 
         return status_code
 

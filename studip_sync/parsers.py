@@ -44,7 +44,7 @@ def extract_files_flat_last_edit(html):
     if not "data-files" in form.attrs:
         raise ParserError("last_edit: Missing data-files attribute in form")
 
-    form_data_files = json.loads(form["data-files"])
+    form_data_files = json.loads(form.attrs["data-files"])
 
     file_timestamps = []
 

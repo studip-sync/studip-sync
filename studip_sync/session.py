@@ -109,7 +109,10 @@ class Session(object):
 
         with self.session.get(URL.files_flat(), params=params) as response:
             if not response.ok:
-                raise DownloadError("Cannot access course files_flat page")
+                if response.status_code == 403 and "Documents" in response.text:
+                    raise MissingFeatureError("This course has no files")
+                else:
+                    raise DownloadError("Cannot access course files_flat page")
             last_edit = parsers.extract_files_flat_last_edit(response.text)
 
         if last_edit == 0:

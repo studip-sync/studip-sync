@@ -17,9 +17,12 @@ def parse_args():
     parser.add_argument("--init", action="store_true",
                         help="create new config file interactively")
 
-    parser.add_argument("--full", action="store_true", help="downloads all courses entirely instead of incrementally")
+    parser.add_argument("--full", action="store_true", help="downloads all courses instead of only new ones")
 
     parser.add_argument("--recent", action="store_true", help="only download the courses of the recent semester")
+
+    parser.add_argument("--new", action="store_true",
+                        help="use new rsync client by only downloading new files instead of bulk")
 
 
     return parser.parse_args()

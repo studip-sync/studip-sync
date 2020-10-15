@@ -24,7 +24,7 @@ class StudIPRSync(object):
         if self.media_destination_dir:
             os.makedirs(self.media_destination_dir, exist_ok=True)
 
-    def sync(self, sync_recent=False):
+    def sync(self, sync_fully=False, sync_recent=False):
         with Session() as session:
             print("Logging in...")
             try:
@@ -53,7 +53,7 @@ class StudIPRSync(object):
 
                 if self.files_destination_dir:
                     try:
-                        CourseRSync(self.files_destination_dir, session, self.workdir, course).download()
+                        CourseRSync(self.files_destination_dir, session, self.workdir, course, sync_fully).download()
                     except MissingFeatureError as e:
                         # Ignore if there are no files
                         pass
@@ -78,9 +78,8 @@ class StudIPRSync(object):
                         status_code = 2
                         raise e
 
-        wait_time = 5
-        print("Waiting {} seconds...".format(wait_time))
-        time.sleep(wait_time)
+        if self.files_destination_dir and status_code == 0:
+            CONFIG.update_last_sync(int(time.time()))
 
         return status_code
 
@@ -96,24 +95,26 @@ class StudIPRSync(object):
 
 class CourseRSync:
 
-    def __init__(self, files_destination, session, workdir, course):
+    def __init__(self, files_destination, session, workdir, course, sync_fully):
         self.session = session
         self.workdir = workdir
         self.course_id = course["course_id"]
         self.course_save_as = course["save_as"]
         self.root_folder = os.path.join(files_destination, self.course_save_as)
+        self.sync_fully = sync_fully
 
     def download(self):
-        if self.course_has_new_files():
+        if self.course_has_new_files(self.sync_fully):
             print("\tSyncing files...")
             self.download_recursive()
         else:
             print("\tSkipping this course...")
 
-    def course_has_new_files(self):
-        # TODO
-        # session.check_course_new_files(course["course_id"], CONFIG.last_sync):
-        return True
+    def course_has_new_files(self, sync_fully=False):
+        if sync_fully:
+            return True
+
+        return self.session.check_course_new_files(self.course_id, CONFIG.last_sync)
 
     def log(self, message, flush=False):
         if flush:
@@ -164,23 +165,23 @@ class CourseRSync:
         for folder_data in form_data_folders:
             new_folder_path_relative = os.path.join(folder_path_relative, folder_data["name"])
 
-            self.log("Accessing folder: " + folder_data["id"] + ": " + folder_data["name"])
+            # self.log("Accessing folder: " + folder_data["id"] + ": " + folder_data["name"])
             self.download_recursive(folder_data["id"], new_folder_path_relative)
 
     def is_file_new(self, file, file_path):
         if not file["size"]:
-            # If there is no size, skip this file, since it cant be downloaded!!!
+            # If there is no size, skip this file, since it cant be downloaded
             return False
 
         try:
             chdate = int(file["chdate"])
             size = int(file["size"])
-        except:
+        except ValueError as e:
             print(file)
-            raise ParserError("File is invalid")
+            raise ParserError("File attributes are invalid")
 
         if not os.path.exists(file_path):
-            self.log("File changed: not exist: {}".format(file_path))
+            self.log("File changed: new: {}".format(file_path))
             return True
 
         file_size = os.path.getsize(file_path)
