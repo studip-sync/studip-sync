@@ -165,7 +165,15 @@ def extract_media_best_download_link(html):
     download_options = soup.select("table#dllist tr td")
 
     if not download_options or len(download_options) <= 1:
-        raise ParserError("media_download_link: No download options found")
+        # If there are no download options try to find an iframe with a src attribute
+        iframe = soup.find("iframe", id="framed_player")
+        if not iframe:
+            raise ParserError("media_download_link: No download options found")
+
+        if not "src" in iframe.attrs:
+            raise ParserError("media_download_link: src is missing from iframe")
+
+        return iframe.attrs["src"]
 
     # Always select the first result as the best result
     # (skip first "Download" td, so instead of 0 select 1)
