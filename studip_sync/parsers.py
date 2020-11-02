@@ -160,32 +160,65 @@ def extract_media_list(html):
 
 
 def extract_media_best_download_link(html):
-    soup = BeautifulSoup(html, 'lxml')
+    def extract_table(html, soup):
+        download_options = soup.select("table#dllist tr td")
 
-    download_options = soup.select("table#dllist tr td")
+        if not download_options or len(download_options) <= 1:
+            raise ParserError("media_download_link: No download options found")
+        # Always select the first result as the best result
+        # (skip first "Download" td, so instead of 0 select 1)
 
-    if not download_options or len(download_options) <= 1:
-        # If there are no download options try to find an iframe with a src attribute
+        download_td = download_options[1]
+
+        download_a = download_td.find("a")
+
+        if not "href" in download_a.attrs:
+            raise ParserError("media_download_link: href is missing from download_a")
+
+        return download_a["href"]
+
+    def extract_iframe(html, soup):
         iframe = soup.find("iframe", id="framed_player")
         if not iframe:
-            raise ParserError("media_download_link: No download options found")
+            raise ParserError("media_download_link: No iframe found")
 
         if not "src" in iframe.attrs:
             raise ParserError("media_download_link: src is missing from iframe")
 
         return iframe.attrs["src"]
 
-    # Always select the first result as the best result
-    # (skip first "Download" td, so instead of 0 select 1)
+    def extract_video(html, soup):
+        video = soup.find("video", id="mediaplayer_html5_api")
+        if not video:
+            raise ParserError("media_download_link: No video item found")
 
-    download_td = download_options[1]
+        if not "src" in video.attrs:
+            raise ParserError("media_download_link: src is missing from video item")
 
-    download_a = download_td.find("a")
+        return video.attrs["src"]
 
-    if not "href" in download_a.attrs:
-        raise ParserError("media_download_link: href is missing from download_a")
+    def extract_video_regex(html, soup):
 
-    return download_a["href"]
+        matcher = re.compile(
+            r"\/plugins.php\/mediacastplugin\/media\/check\/.+\.mp4")
+        links = matcher.findall(html)
+
+        if len(links) != 1:
+            raise ParserError("media_download_link: links != 1")
+
+        return links[0]
+
+    soup = BeautifulSoup(html, 'lxml')
+
+    func_attempts = [extract_table, extract_iframe, extract_video, extract_video_regex]
+
+    for func_attempt in func_attempts:
+        try:
+            return func_attempt(html, soup)
+        except ParserError:
+            continue
+
+    raise ParserError("media_download_link: all attempts to extract url failed")
 
 
 def extract_filename_from_headers(headers):
