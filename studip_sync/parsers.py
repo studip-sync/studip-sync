@@ -203,10 +203,10 @@ def extract_media_best_download_link(html):
             r"\/plugins.php\/mediacastplugin\/media\/check\/.+\.mp4")
         links = matcher.findall(html)
 
-        if len(links) != 1:
-            raise ParserError("media_download_link: links != 1")
+        if len(links) < 1:
+            raise ParserError("media_download_link: links < 1")
 
-        return links[0]
+        return links[len(links)-1]
 
     soup = BeautifulSoup(html, 'lxml')
 
