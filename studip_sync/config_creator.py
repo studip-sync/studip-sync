@@ -19,6 +19,7 @@ class ConfigCreator(object):
         self._session.__exit__(exc_type, exc_value, traceback)
 
     def new_config(self):
+        base_url = input("URL of StudIP (leave empty for default server): ")
         username = input("Username: ")
         password = getpass.getpass()
         save_password = input("Save password (in clear text)? [y/N]: ").lower() in ("y", "yes")
@@ -31,6 +32,9 @@ class ConfigCreator(object):
         config = {}
         #config["courses"] = courses
         config["user"] = {"login": username}
+
+        if base_url:
+            config["base_url"] = base_url
 
         if save_password:
             config["user"]["password"] = password

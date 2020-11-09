@@ -5,6 +5,7 @@ from studip_sync.config_creator import ConfigCreator
 from studip_sync.arg_parser import ARGS
 from studip_sync import CONFIG_PATH
 
+URL_BASEURL_DEFAULT = "https://studip.uni-goettingen.de"
 
 class ConfigError(Exception):
     pass
@@ -99,6 +100,14 @@ class Config(object):
     #@property
     #def courses(self):
     #    return self.config.get("courses")
+
+    @property
+    def base_url(self):
+        if not self.config:
+            return URL_BASEURL_DEFAULT
+
+        return self.config.get("base_url", URL_BASEURL_DEFAULT)
+
 
     @property
     def files_destination(self):

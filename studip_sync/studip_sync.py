@@ -37,7 +37,7 @@ class StudipSync(object):
         extractor = Extractor(self.extract_dir)
         rsync = RsyncWrapper()
 
-        with Session() as session:
+        with Session(CONFIG.base_url) as session:
             print("Logging in...")
             try:
                 session.login(CONFIG.username, CONFIG.password)

@@ -35,6 +35,8 @@ def extract_login_data(html):
 
             return response
 
+    raise ParserError("login: Couldn't find login data! Is the base url correct?")
+
 
 def extract_files_flat_last_edit(html):
     soup = BeautifulSoup(html, 'lxml')

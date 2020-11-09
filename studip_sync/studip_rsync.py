@@ -25,7 +25,7 @@ class StudIPRSync(object):
             os.makedirs(self.media_destination_dir, exist_ok=True)
 
     def sync(self, sync_fully=False, sync_recent=False):
-        with Session() as session:
+        with Session(CONFIG.base_url) as session:
             print("Logging in...")
             try:
                 session.login(CONFIG.username, CONFIG.password)

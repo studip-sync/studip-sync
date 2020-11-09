@@ -1,6 +1,7 @@
 import os
 import shutil
 import time
+import urllib.parse
 
 import requests
 
@@ -27,45 +28,44 @@ class DownloadError(SessionError):
 
 
 class URL(object):
-    @staticmethod
-    def login_page():
-        return "https://studip.uni-goettingen.de"
+    def __init__(self, base_url):
+        self.base_url = base_url
 
-    @staticmethod
-    def files_main():
-        return "https://studip.uni-goettingen.de/dispatch.php/course/files"
+    def __relative_url(self, rel_url):
+        return urllib.parse.urljoin(self.base_url, rel_url)
 
-    @staticmethod
-    def files_index(folder_id):
-        return "https://studip.uni-goettingen.de/dispatch.php/course/files/index/{}".format(folder_id)
+    def login_page(self):
+        return self.__relative_url("/")
 
-    @staticmethod
-    def files_flat():
-        return "https://studip.uni-goettingen.de/dispatch.php/course/files/flat"
+    def files_main(self):
+        return self.__relative_url("/dispatch.php/course/files")
 
-    @staticmethod
-    def bulk_download(folder_id):
-        return "https://studip.uni-goettingen.de/dispatch.php/file/bulk/{}".format(folder_id)
+    def files_index(self, folder_id):
+        return self.__relative_url("/dispatch.php/course/files/index/{}".format(folder_id))
 
-    @staticmethod
-    def studip_main():
-        return "https://studip.uni-goettingen.de/dispatch.php/start"
+    def files_flat(self):
+        return self.__relative_url("/dispatch.php/course/files/flat")
 
-    @staticmethod
-    def courses():
-        return "https://studip.uni-goettingen.de/dispatch.php/my_courses"
+    def bulk_download(self, folder_id):
+        return self.__relative_url("/dispatch.php/file/bulk/{}".format(folder_id))
 
-    @staticmethod
-    def mediacast_list():
-        return "https://studip.uni-goettingen.de/plugins.php/mediacastplugin/media/index"
+    def studip_main(self):
+        return self.__relative_url("/dispatch.php/start")
+
+    def courses(self):
+        return self.__relative_url("/dispatch.php/my_courses")
+
+    def mediacast_list(self):
+        return self.__relative_url("/plugins.php/mediacastplugin/media/index")
 
 
 class Session(object):
 
-    def __init__(self):
+    def __init__(self, base_url):
         super(Session, self).__init__()
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "WeWantFileSync"})
+        self.url = URL(base_url)
 
     def __enter__(self):
         return self
@@ -74,7 +74,7 @@ class Session(object):
         self.session.__exit__()
 
     def login(self, username, password):
-        with self.session.get(URL.login_page()) as response:
+        with self.session.get(self.url.login_page()) as response:
             if not response.ok:
                 raise LoginError("Cannot access Stud.IP login page")
             login_data = parsers.extract_login_data(response.text)
@@ -93,12 +93,12 @@ class Session(object):
                 raise LoginError("Wrong credentials, cannot login")
 
         #Test if logged in
-        with self.session.post(URL.studip_main()) as response:
+        with self.session.post(self.url.studip_main()) as response:
             if not response.ok or not "Veranstaltungen" in response.text:
                 raise LoginError("Cannot access Stud.IP main page")
 
     def get_courses(self, only_recent_semester=False):
-        with self.session.get(URL.courses()) as response:
+        with self.session.get(self.url.courses()) as response:
             if not response.ok:
                 raise SessionError("Failed to get courses")
 
@@ -107,7 +107,7 @@ class Session(object):
     def check_course_new_files(self, course_id, last_sync):
         params = {"cid": course_id}
 
-        with self.session.get(URL.files_flat(), params=params) as response:
+        with self.session.get(self.url.files_flat(), params=params) as response:
             if not response.ok:
                 if response.status_code == 403 and "Documents" in response.text:
                     raise MissingFeatureError("This course has no files")
@@ -124,13 +124,13 @@ class Session(object):
     def download(self, course_id, workdir, sync_only=None):
         params = {"cid": course_id}
 
-        with self.session.get(URL.files_main(), params=params) as response:
+        with self.session.get(self.url.files_main(), params=params) as response:
             if not response.ok:
                 raise DownloadError("Cannot access course files page")
             folder_id = parsers.extract_parent_folder_id(response.text)
             csrf_token = parsers.extract_csrf_token(response.text)
 
-        download_url = URL.bulk_download(folder_id)
+        download_url = self.url.bulk_download(folder_id)
         data = {
             "security_token": csrf_token,
             # "parent_folder_id": folder_id,
@@ -158,9 +158,9 @@ class Session(object):
         params = {"cid": course_id}
 
         if folder_id:
-            url = URL.files_index(folder_id)
+            url = self.url.files_index(folder_id)
         else:
-            url = URL.files_main()
+            url = self.url.files_main()
 
         with self.session.get(url, params=params) as response:
             if not response.ok:
@@ -175,7 +175,7 @@ class Session(object):
     def download_media(self, course_id, media_workdir):
         params = {"cid": course_id}
 
-        mediacast_list_url = URL.mediacast_list()
+        mediacast_list_url = self.url.mediacast_list()
 
         with self.session.get(mediacast_list_url, params=params) as response:
             if not response.ok:
