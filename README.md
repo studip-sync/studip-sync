@@ -1,9 +1,13 @@
 # studip-sync
 
+[![Snap Status](https://build.snapcraft.io/badge/woefe/studip-sync.svg)](https://build.snapcraft.io/user/woefe/studip-sync)
+
 Download and synchronize files and media from Stud.IP -- the campus management platform deployed at several German universities.
-Note that this fork currently only works at the *University of Göttingen*.
+Note that this project is currently only supported for the *University of Göttingen* but could work at other universities with similar authentication methods.
 
 ## Installation
+
+### Installation from source
 
 1. `git clone https://github.com/lenke182/studip-sync`
 2. Install all needed dependencies
@@ -13,6 +17,21 @@ To create a permanent configuration:
 
 1. Run `./studip_sync.py --init` (see Configuration)
 2. Schedule a cron job or manually run `./studip_sync.py` to sync your data.
+
+### Installation as snap
+
+1. If not yet installed, [install snapd](https://docs.snapcraft.io/core/install)
+2. `sudo snap install --edge studip-sync`
+3. `sudo snap connect studip-sync:home`
+
+**Important Note**: If you install studip-sync as a snap, you cannot use `~` to reference your home directory in the
+config file. If you ignore this note, the files will be synced to `snap/studip-sync/current/...`
+
+**Limitation**: The snap can only write to non-hidden directories in you home directory. If you omit Step 3, it cannot
+write to your home directory at all.
+
+### Installation on Arch Linux
+Install [studip-sync-git](https://aur.archlinux.org/packages/studip-sync-git/) from the AUR.
 
 ## Configuration
 
@@ -32,6 +51,7 @@ To create a new configuration file execute:
     },
     "files_destination": "/home/bob/Documents/Uni",
     "media_destination": "/home/bob/Videos/Uni",
+    "base_url": "https://studip.uni-goettingen.de"
 }
 
 ```
