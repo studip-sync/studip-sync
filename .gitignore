@@ -103,7 +103,10 @@ venv.bak/
 # mypy
 .mypy_cache/
 
+# local files
+local/
 
+# Google Tasks Test
 tasks/
 token.pickle
 credentials.json
