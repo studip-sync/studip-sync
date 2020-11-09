@@ -1,4 +1,4 @@
-# studip-sync (Fork)
+# studip-sync
 
 Download and synchronize files and media from Stud.IP -- the campus management platform deployed at several German universities.
 Note that this fork currently only works at the *University of Göttingen*.
