@@ -9,7 +9,7 @@ Note that this project is currently only supported for the *University of Götti
 
 ### Installation from source
 
-1. `git clone https://github.com/lenke182/studip-sync`
+1. `git clone https://github.com/studip-sync/studip-sync`
 2. Install all needed dependencies
 3. Then run `./studip_sync.py -d /path/to/files -m /path/to/media` to sync files to `/path/to/files` and media to `/path/to/media`. (see Usage)
 
