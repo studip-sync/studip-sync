@@ -1,6 +1,6 @@
 # studip-sync
 
-[![Snap Status](https://build.snapcraft.io/badge/woefe/studip-sync.svg)](https://build.snapcraft.io/user/woefe/studip-sync)
+[![studip-sync](https://snapcraft.io/studip-sync/badge.svg)](https://snapcraft.io/studip-sync)
 
 Download and synchronize files and media from Stud.IP -- the campus management platform deployed at several German universities.
 Note that this project is currently only supported for the *University of Göttingen* but could work at other universities with similar authentication methods.
