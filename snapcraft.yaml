@@ -2,9 +2,10 @@ name: studip-sync
 version: git
 summary: Synchronize files from Stud.IP
 description: |
-  Download and synchronize files from Stud.IP -- the campus management
-  platform deployed at several German universities. Note that studip-sync
-  currently only works at the University of Passau.
+  Download and synchronize files and media from Stud.IP -- the campus management
+  platform deployed at several German universities. Note that this project
+  is currently only supported for the University of Göttingen but could work
+  at other universities with similar authentication methods.
 
 grade: devel
 confinement: strict

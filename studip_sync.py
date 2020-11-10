@@ -9,7 +9,12 @@ if ARGS.init:
         creator.new_config()
     exit()
 
-from studip_sync.studip_sync import StudipSync
-with StudipSync() as s:
-    exit(s.sync())
+if not ARGS.new:
+    from studip_sync.studip_sync import StudipSync
+    with StudipSync() as s:
+        exit(s.sync(ARGS.full, ARGS.recent))
+else:
+    from studip_sync.studip_rsync import StudIPRSync
+    with StudIPRSync() as s:
+        exit(s.sync(ARGS.full, ARGS.recent))
 
