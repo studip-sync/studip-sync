@@ -6,7 +6,7 @@ import urllib.parse
 import requests
 
 from studip_sync import parsers
-from studip_sync.config import URL_BASEURL_DEFAULT
+from studip_sync.constants import URL_BASEURL_DEFAULT
 
 
 class SessionError(Exception):

@@ -4,8 +4,8 @@ import getpass
 from studip_sync.config_creator import ConfigCreator
 from studip_sync.arg_parser import ARGS
 from studip_sync import CONFIG_PATH
+from studip_sync.constants import URL_BASEURL_DEFAULT
 
-URL_BASEURL_DEFAULT = "https://studip.uni-goettingen.de"
 
 class ConfigError(Exception):
     pass
