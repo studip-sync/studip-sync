@@ -220,6 +220,10 @@ def extract_media_best_download_link(html):
         except ParserError:
             continue
 
+    # Debug statement to identify parser errors
+    print("----------- DEBUG -----------")
+    print(html)
+
     raise ParserError("media_download_link: all attempts to extract url failed")
 
 
