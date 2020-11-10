@@ -74,7 +74,7 @@ class Config(object):
             return None
 
         user = self.config.get("user")
-        
+
         if not user:
             return None
 

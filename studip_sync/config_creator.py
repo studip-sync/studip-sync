@@ -26,6 +26,9 @@ class ConfigCreator(object):
         files_destination = input("Sync files to directory (leave empty to disable): ")
         media_destination = input("Sync media to directory (leave empty to disable): ")
 
+        if base_url:
+            self._session.set_base_url(base_url)
+
         self._session.login(username, password)
         #courses = list(self._session.get_courses())
 

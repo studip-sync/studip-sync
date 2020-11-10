@@ -6,6 +6,7 @@ import urllib.parse
 import requests
 
 from studip_sync import parsers
+from studip_sync.config import URL_BASEURL_DEFAULT
 
 
 class SessionError(Exception):
@@ -61,7 +62,7 @@ class URL(object):
 
 class Session(object):
 
-    def __init__(self, base_url):
+    def __init__(self, base_url=URL_BASEURL_DEFAULT):
         super(Session, self).__init__()
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "WeWantFileSync"})
@@ -72,6 +73,9 @@ class Session(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.session.__exit__()
+
+    def set_base_url(self, new_base_url):
+        self.url = URL(new_base_url)
 
     def login(self, username, password):
         with self.session.get(self.url.login_page()) as response:
