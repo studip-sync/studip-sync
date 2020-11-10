@@ -22,18 +22,17 @@ class ConfigCreator(object):
         base_url = input("URL of StudIP (leave empty for default server): ")
         username = input("Username: ")
         password = getpass.getpass()
-        save_password = input("Save password (in clear text)? [y/N]: ").lower() in ("y", "yes")
-        files_destination = input("Sync files to directory (leave empty to disable): ")
-        media_destination = input("Sync media to directory (leave empty to disable): ")
 
         if base_url:
             self._session.set_base_url(base_url)
 
         self._session.login(username, password)
-        #courses = list(self._session.get_courses())
+
+        save_password = input("Save password (in clear text)? [y/N]: ").lower() in ("y", "yes")
+        files_destination = input("Sync files to directory (leave empty to disable): ")
+        media_destination = input("Sync media to directory (leave empty to disable): ")
 
         config = {}
-        #config["courses"] = courses
         config["user"] = {"login": username}
 
         if base_url:
