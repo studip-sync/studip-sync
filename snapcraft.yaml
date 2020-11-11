@@ -25,4 +25,4 @@ parts:
 apps:
   studip-sync:
     command: env LC_ALL=C.UTF-8 LANG=C.UTF-8 $SNAP/bin/studip-sync
-    plugs: [home, network]
+    plugs: [home, network, removable-media]
