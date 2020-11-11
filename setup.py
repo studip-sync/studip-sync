@@ -13,6 +13,6 @@ setup(
     author_email=studip_sync.__email__,
     license=studip_sync.__license__,
     scripts=['scripts/studip-sync'],
-    packages=['studip_sync'],
+    packages=['studip_sync', 'studip_sync.plugins'],
     install_requires=['beautifulsoup4', 'requests', 'lxml'],
 )
