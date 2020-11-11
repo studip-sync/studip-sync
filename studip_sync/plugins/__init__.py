@@ -3,6 +3,8 @@ import os
 from studip_sync.constants import CONFIG_FILENAME
 from studip_sync.helpers import JSONConfig
 
+class PluginError(Exception):
+    pass
 
 class PluginConfigError(Exception):
     pass

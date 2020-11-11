@@ -1,4 +1,5 @@
 from studip_sync.config import CONFIG
+from studip_sync.plugins import PluginError
 from studip_sync.plugins.plugin_loader import PluginLoader
 
 
@@ -14,7 +15,11 @@ class PluginHelper(object):
             print("Plugin is already enabled. To reconfigure call --reconfigure-plugin PLUGIN")
             return 1
 
-        self._configure()
+        try:
+            self._configure()
+        except PluginError as e:
+            print(e)
+            return 1
 
         new_plugins = CONFIG.plugins
         new_plugins.append(self.plugin_name)
@@ -27,7 +32,11 @@ class PluginHelper(object):
             print("Plugin is not enabled. To enable the plugin call --enable-plugin PLUGIN")
             return 1
 
-        self._configure()
+        try:
+            self._configure()
+        except PluginError as e:
+            print(e)
+            return 1
 
     def _configure(self):
         plugin = PluginLoader.load_plugin(self.plugin_name, CONFIG.config_dir)
