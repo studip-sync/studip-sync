@@ -79,8 +79,8 @@ To sync only the last semester and skip older courses, use the `--recent` flag. 
 ### Running studip-sync manually
 ```shell
 # Synchronizes files to /path/to/sync/dir
-# and uses a non-default location for the config file
-./studip_sync.py -c ./config.json -d /path/to/sync/dir
+# and uses a non-default location for the config file (here: ./config.json)
+./studip_sync.py -c ./ -d /path/to/sync/dir
 
 # Reads all parameters from ~/.config/studip-sync/config.json
 ./studip_sync.py
@@ -92,3 +92,20 @@ Run `crontab -e` and add the following lines:
 # Run at 8:00, 13:00 and 19:00 every day.
 0 8,13,19 * * *  /path/to/studip-sync/studip_sync.py
 ```
+
+
+## Plugin support
+
+studip-sync supports the feature to load plugins to enable more features.
+
+To enable a plugin run `studip-sync --enable-plugin PLUGIN` and to disable `studip-sync --disable-plugin PLUGIN`.
+To reconfigure a plugin run `studip-sync --reconfigure-plugin PLUGIN`.
+
+### Google Tasks API
+
+This plugin can add a new task on each successful media download into a list at Google Tasks. 
+
+To use this plugin you need to have a Google Cloud project with Tasks API enabled.
+Download the `credentials.json` from Google Cloud and place it at `.config/studip-sync/google-tasks/credentials.json`.
+Then run `studip-sync --enable-plugin google-tasks` and authenticate this plugin over OAuth with your Google account.
+Finally enter the task list id of your specified task list. For this you need to create a task list at Google Tasks first. 
