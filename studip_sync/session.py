@@ -7,7 +7,7 @@ import requests
 
 from studip_sync import parsers
 from studip_sync.constants import URL_BASEURL_DEFAULT
-from studip_sync.plugins import PluginList
+from studip_sync.plugins.plugin_list import PluginList
 
 
 class SessionError(Exception):
