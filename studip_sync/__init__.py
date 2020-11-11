@@ -5,8 +5,7 @@ A command line tool that keeps track of new files on Stud.IP and downloads them 
 
 __license__ = "Unlicense"
 __version__ = "2.0.0"
-__author__ = __maintainer__ = "Wolfgang Popp"
-__email__ = "mail@wolfgang-popp.de"
+__author__ = __maintainer__ = "lenke182"
 
 
 def _get_config_path():
