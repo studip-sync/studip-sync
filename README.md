@@ -21,7 +21,7 @@ To create a permanent configuration:
 ### Installation as snap
 
 1. If not yet installed, [install snapd](https://docs.snapcraft.io/core/install)
-2. `sudo snap install --edge studip-sync`
+2. `sudo snap install --beta studip-sync`
 3. `sudo snap connect studip-sync:home`
 
 **Important Note**: If you install studip-sync as a snap, you cannot use `~` to reference your home directory in the
