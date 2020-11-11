@@ -1,7 +1,7 @@
 import getpass
-import json
-import os
-from studip_sync import CONFIG_PATH
+
+from studip_sync import get_config_file
+from studip_sync.helpers import JSONConfig
 from studip_sync.session import Session
 
 
@@ -47,17 +47,13 @@ class ConfigCreator(object):
         if media_destination:
             config["media_destination"] = media_destination
 
-        path = CONFIG_PATH
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as config_file:
-            print("Writing new config to '{}'".format(path))
-            json.dump(config, config_file, ensure_ascii=False, indent=4)
+        path = get_config_file()
+
+        JSONConfig.save_config(path, config)
 
     @staticmethod
     def replace_config(config):
-        path = CONFIG_PATH
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as config_file:
-            print("Replacing config at '{}'".format(path))
-            json.dump(config, config_file, ensure_ascii=False, indent=4)
+        path = get_config_file()
+
+        JSONConfig.save_config(path, config)
 

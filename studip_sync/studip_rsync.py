@@ -6,6 +6,7 @@ import tempfile
 import time
 
 from studip_sync.config import CONFIG
+from studip_sync.plugins.plugins import PLUGINS
 from studip_sync.session import Session, DownloadError, LoginError, MissingFeatureError, \
     MissingPermissionFolderError
 from studip_sync.parsers import ParserError
@@ -25,7 +26,9 @@ class StudIPRSync(object):
             os.makedirs(self.media_destination_dir, exist_ok=True)
 
     def sync(self, sync_fully=False, sync_recent=False):
-        with Session(CONFIG.base_url) as session:
+        PLUGINS.hook("hook_start")
+
+        with Session(base_url=CONFIG.base_url, plugins=PLUGINS) as session:
             print("Logging in...")
             try:
                 session.login(CONFIG.username, CONFIG.password)
@@ -69,7 +72,7 @@ class StudIPRSync(object):
                         media_course_dir = os.path.join(self.media_destination_dir,
                                                         course["save_as"])
 
-                        session.download_media(course["course_id"], media_course_dir)
+                        session.download_media(course["course_id"], media_course_dir, course["save_as"])
                     except MissingFeatureError as e:
                         # Ignore if there is no media
                         pass

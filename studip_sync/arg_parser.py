@@ -3,15 +3,15 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description="Synchronize Stud.IP files")
 
-    parser.add_argument("-c", "--config", type=argparse.FileType('r'), metavar="FILE",
+    parser.add_argument("-c", "--config", metavar="DIR",
                         default=None,
-                        help="set the path to the config file (Default is "
-                        "'~/.config/studip-sync/config.json')")
+                        help="set the path to the config dir (Default is "
+                        "'~/.config/studip-sync/')")
 
-    parser.add_argument("-d", "--destination", nargs="?", metavar="DIR", default=None,
+    parser.add_argument("-d", "--destination", metavar="DIR", default=None,
                         help="synchronize files to the given destination directory (If no config is present this argument implies --full)")
 
-    parser.add_argument("-m", "--media", nargs="?", metavar="DIR", default=None,
+    parser.add_argument("-m", "--media", metavar="DIR", default=None,
                         help="synchronize media to the given destination directory")
 
     parser.add_argument("--init", action="store_true",
@@ -24,6 +24,13 @@ def parse_args():
     parser.add_argument("--new", action="store_true",
                         help="use new rsync client by only downloading new files instead of bulk")
 
+    # PLUGINS
+    parser.add_argument("--enable-plugin", metavar="PLUGIN", help="enables and configures a plugin")
+
+    parser.add_argument("--reconfigure-plugin", metavar="PLUGIN",  help="reconfigures a already-enabled plugin")
+
+    parser.add_argument("--disable-plugin", metavar="PLUGIN",
+                        help="disables a plugin")
 
     return parser.parse_args()
 

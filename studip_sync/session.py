@@ -7,6 +7,7 @@ import requests
 
 from studip_sync import parsers
 from studip_sync.constants import URL_BASEURL_DEFAULT
+from studip_sync.plugins import PluginList
 
 
 class SessionError(Exception):
@@ -62,11 +63,16 @@ class URL(object):
 
 class Session(object):
 
-    def __init__(self, base_url=URL_BASEURL_DEFAULT):
+    def __init__(self, plugins=None, base_url=URL_BASEURL_DEFAULT):
         super(Session, self).__init__()
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "WeWantFileSync"})
         self.url = URL(base_url)
+
+        if plugins is None:
+            self.plugins = PluginList()
+        else:
+            self.plugins = plugins
 
     def __enter__(self):
         return self
@@ -176,7 +182,7 @@ class Session(object):
                     raise DownloadError("Cannot access course files/files_index page")
             return parsers.extract_files_index_data(response.text)
 
-    def download_media(self, course_id, media_workdir):
+    def download_media(self, course_id, media_workdir, course_save_as):
         params = {"cid": course_id}
 
         mediacast_list_url = self.url.mediacast_list()
@@ -242,3 +248,5 @@ class Session(object):
 
                 with open(filepath, "wb") as download_file:
                     shutil.copyfileobj(response.raw, download_file)
+
+                self.plugins.hook("hook_media_download_successful", media_filename, course_save_as)

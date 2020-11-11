@@ -1,43 +1,30 @@
-import json
-import os
 import getpass
-from studip_sync.config_creator import ConfigCreator
+import os
+
+from studip_sync import get_config_file
 from studip_sync.arg_parser import ARGS
-from studip_sync import CONFIG_PATH
+from studip_sync.config_creator import ConfigCreator
 from studip_sync.constants import URL_BASEURL_DEFAULT
+from studip_sync.helpers import JSONConfig
 
 
 class ConfigError(Exception):
     pass
 
 
-class Config(object):
+class Config(JSONConfig):
 
     def __init__(self):
-        super(Config, self).__init__()
         self.args = ARGS
 
-        config_file = None
+        config_path = get_config_file()
 
-        if self.args.config:
-            config_file = self.args.config
-        else:
-            try:
-                config_file = open(CONFIG_PATH)
-            except FileNotFoundError:
-                #raise ConfigError("Config file missing! Run 'studip-sync --init' to create a new "
-                #                  "config file")
-                pass
-
-        if config_file:
-            self.config = json.load(config_file)
-        else:
-            self.config = None
+        self.config_dir = os.path.dirname(config_path)
 
         self._username = None
         self._password = None
 
-        self._check()
+        super(Config, self).__init__(config_path)
 
     def _check(self):
         if not self.files_destination and not self.media_destination:
@@ -69,6 +56,21 @@ class Config(object):
         new_config["last_sync"] = last_sync
         ConfigCreator.replace_config(new_config)
 
+    @property
+    def plugins(self):
+        if not self.config:
+            return []
+
+        return self.config.get("plugins", [])
+
+    def update_plugins(self, plugins):
+        if not self.config:
+            return
+
+        new_config = self.config
+        new_config["plugins"] = plugins
+        ConfigCreator.replace_config(new_config)
+
     def user_property(self, prop):
         if not self.config:
             return None
@@ -96,10 +98,6 @@ class Config(object):
 
         self._password = self.user_property("password") or getpass.getpass()
         return self._password
-
-    #@property
-    #def courses(self):
-    #    return self.config.get("courses")
 
     @property
     def base_url(self):
