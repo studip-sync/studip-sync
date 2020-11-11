@@ -5,11 +5,7 @@ from studip_sync import get_config_file
 from studip_sync.arg_parser import ARGS
 from studip_sync.config_creator import ConfigCreator
 from studip_sync.constants import URL_BASEURL_DEFAULT
-from studip_sync.helpers import JSONConfig
-
-
-class ConfigError(Exception):
-    pass
+from studip_sync.helpers import JSONConfig, ConfigError
 
 
 class Config(JSONConfig):

@@ -2,18 +2,18 @@ import json
 import os
 
 
+class ConfigError(Exception):
+    pass
+
 class JSONConfig(object):
     def __init__(self, config_path=None):
         super(JSONConfig, self).__init__()
 
-        config_file = None
-
         try:
             config_file = open(config_path)
         except FileNotFoundError:
-            # raise ConfigError("Config file missing! Run 'studip-sync --init' to create a new "
-            #                  "config file")
-            pass
+            raise ConfigError("Config file missing! Run 'studip-sync --init' to create a new "
+                              "config file")
 
         if config_file:
             self.config = json.load(config_file)

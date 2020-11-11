@@ -3,12 +3,13 @@
 
 from studip_sync.arg_parser import ARGS
 from studip_sync.config_creator import ConfigCreator
-from studip_sync.plugins.plugin_helper import PluginHelper
 
 if ARGS.init:
     with ConfigCreator() as creator:
         creator.new_config()
     exit()
+
+from studip_sync.plugins.plugin_helper import PluginHelper
 
 if ARGS.enable_plugin:
     with PluginHelper(ARGS.enable_plugin) as plugin_helper:
