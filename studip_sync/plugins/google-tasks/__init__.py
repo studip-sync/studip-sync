@@ -2,7 +2,7 @@ __all__ = ['Plugin']
 
 import os.path
 
-from studip_sync.helpers import JSONConfig
+from studip_sync.helpers import JSONConfig, ConfigError
 from studip_sync.plugins import PluginBase
 import pickle
 
@@ -15,7 +15,27 @@ SCOPES = ['https://www.googleapis.com/auth/tasks']
 class CredsError(PermissionError):
     pass
 
+def isiterable(obj):
+    try:
+        iter(obj)
+    except TypeError:
+        return False
+    else:
+        return True
+
 class PluginConfig(JSONConfig):
+
+    @property
+    def ignore_filetype(self):
+        if not self.config:
+            return
+
+        ignore_filetype = self.config.get("ignore_filetype", [])
+
+        if not isiterable(ignore_filetype):
+            raise ConfigError("ignore_filetype is not iterable")
+
+        return ignore_filetype
 
     @property
     def task_list_id(self):
@@ -23,6 +43,12 @@ class PluginConfig(JSONConfig):
             return
 
         return self.config.get("task_list_id")
+
+    def _check(self):
+
+        # access ignore_filetype once to check if valid property
+        if self.ignore_filetype:
+            pass
 
 class Plugin(PluginBase):
 
@@ -99,6 +125,13 @@ class Plugin(PluginBase):
         self.service = build('tasks', 'v1', credentials=creds)
 
     def hook_media_download_successful(self, filename, course_save_as):
+        if self.config and self.config.ignore_filetype:
+            file_extension = os.path.splitext(filename)[1][1:]
+
+            if file_extension in self.config.ignore_filetype:
+                self.print("Skipping task: " + filename)
+                return
+
         return self.insert_new_task(filename, course_save_as)
 
     def insert_new_task(self, title, description):
@@ -111,6 +144,7 @@ class Plugin(PluginBase):
             "hidden": False,
         }
 
+        self.print("Inserting new task: " + title)
         return self.service.tasks().insert(tasklist=self.config.task_list_id, body=body).execute()
 
 

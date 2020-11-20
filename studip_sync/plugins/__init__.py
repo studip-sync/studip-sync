@@ -34,6 +34,9 @@ class PluginBase(object):
     def hook_media_download_successful(self, filename, course_save_as):
         pass
 
+    def print(self, str):
+        print("[" + self.plugin_name + "] " + str)
+
     def __enter__(self):
         return self
 
