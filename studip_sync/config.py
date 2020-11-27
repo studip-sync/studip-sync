@@ -4,7 +4,8 @@ import os
 from studip_sync import get_config_file
 from studip_sync.arg_parser import ARGS
 from studip_sync.config_creator import ConfigCreator
-from studip_sync.constants import URL_BASEURL_DEFAULT
+from studip_sync.constants import URL_BASEURL_DEFAULT, AUTHENTICATION_TYPE_DEFAULT, \
+    AUTHENTICATION_TYPE_DATA_DEFAULT, AUTHENTICATION_TYPES
 from studip_sync.helpers import JSONConfig, ConfigError
 
 
@@ -32,6 +33,9 @@ class Config(JSONConfig):
 
         if not self.password:
             raise ConfigError("Password is missing")
+
+        if self.auth_type not in AUTHENTICATION_TYPES:
+            raise ConfigError("Invalid auth type!")
 
     @property
     def last_sync(self):
@@ -102,6 +106,19 @@ class Config(JSONConfig):
 
         return self.config.get("base_url", URL_BASEURL_DEFAULT)
 
+    @property
+    def auth_type(self):
+        if not self.config:
+            return AUTHENTICATION_TYPE_DEFAULT
+
+        return self.config.get("auth_type", AUTHENTICATION_TYPE_DEFAULT)
+
+    @property
+    def auth_type_data(self):
+        if not self.config:
+            return AUTHENTICATION_TYPE_DATA_DEFAULT
+
+        return self.config.get("auth_type_data", AUTHENTICATION_TYPE_DATA_DEFAULT)
 
     @property
     def files_destination(self):

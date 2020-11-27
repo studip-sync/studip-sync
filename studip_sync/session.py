@@ -6,7 +6,7 @@ import urllib.parse
 import requests
 
 from studip_sync import parsers
-from studip_sync.constants import URL_BASEURL_DEFAULT
+from studip_sync.constants import URL_BASEURL_DEFAULT, AUTHENTICATION_TYPES
 from studip_sync.plugins.plugin_list import PluginList
 
 
@@ -14,9 +14,6 @@ class SessionError(Exception):
     pass
 
 class FileError(Exception):
-    pass
-
-class LoginError(SessionError):
     pass
 
 class MissingFeatureError(Exception):
@@ -37,28 +34,28 @@ class URL(object):
         return urllib.parse.urljoin(self.base_url, rel_url)
 
     def login_page(self):
-        return self.__relative_url("/")
+        return self.__relative_url("")
 
     def files_main(self):
-        return self.__relative_url("/dispatch.php/course/files")
+        return self.__relative_url("dispatch.php/course/files")
 
     def files_index(self, folder_id):
-        return self.__relative_url("/dispatch.php/course/files/index/{}".format(folder_id))
+        return self.__relative_url("dispatch.php/course/files/index/{}".format(folder_id))
 
     def files_flat(self):
-        return self.__relative_url("/dispatch.php/course/files/flat")
+        return self.__relative_url("dispatch.php/course/files/flat")
 
     def bulk_download(self, folder_id):
-        return self.__relative_url("/dispatch.php/file/bulk/{}".format(folder_id))
+        return self.__relative_url("dispatch.php/file/bulk/{}".format(folder_id))
 
     def studip_main(self):
-        return self.__relative_url("/dispatch.php/start")
+        return self.__relative_url("dispatch.php/start")
 
     def courses(self):
-        return self.__relative_url("/dispatch.php/my_courses")
+        return self.__relative_url("dispatch.php/my_courses")
 
     def mediacast_list(self):
-        return self.__relative_url("/plugins.php/mediacastplugin/media/index")
+        return self.__relative_url("plugins.php/mediacastplugin/media/index")
 
 
 class Session(object):
@@ -83,29 +80,9 @@ class Session(object):
     def set_base_url(self, new_base_url):
         self.url = URL(new_base_url)
 
-    def login(self, username, password):
-        with self.session.get(self.url.login_page()) as response:
-            if not response.ok:
-                raise LoginError("Cannot access Stud.IP login page")
-            login_data = parsers.extract_login_data(response.text)
-
-        login_params_auth = {
-            "loginname": username,
-            "password": password
-        }
-
-        login_params = {**login_params_auth, **login_data['params']}
-
-        with self.session.post(login_data['action'], data=login_params) as response:
-            if not response.ok:
-                raise LoginError("Cannot post login data")
-            elif "messagebox_error" in response.text:
-                raise LoginError("Wrong credentials, cannot login")
-
-        #Test if logged in
-        with self.session.post(self.url.studip_main()) as response:
-            if not response.ok or not "Veranstaltungen" in response.text:
-                raise LoginError("Cannot access Stud.IP main page")
+    def login(self, auth_type, auth_type_data, username, password):
+        auth = AUTHENTICATION_TYPES[auth_type]
+        auth.login(self, username, password, auth_type_data)
 
     def get_courses(self, only_recent_semester=False):
         with self.session.get(self.url.courses()) as response:

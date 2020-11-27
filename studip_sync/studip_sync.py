@@ -8,8 +8,9 @@ import time
 from datetime import datetime
 
 from studip_sync.config import CONFIG
+from studip_sync.logins import LoginError
 from studip_sync.plugins.plugins import PLUGINS
-from studip_sync.session import Session, DownloadError, LoginError, MissingFeatureError
+from studip_sync.session import Session, DownloadError, MissingFeatureError
 from studip_sync.parsers import ParserError
 
 
@@ -43,7 +44,7 @@ class StudipSync(object):
         with Session(base_url=CONFIG.base_url, plugins=PLUGINS) as session:
             print("Logging in...")
             try:
-                session.login(CONFIG.username, CONFIG.password)
+                session.login(CONFIG.auth_type, CONFIG.auth_type_data, CONFIG.username, CONFIG.password)
             except (LoginError, ParserError) as e:
                 print("Login failed!")
                 print(e)

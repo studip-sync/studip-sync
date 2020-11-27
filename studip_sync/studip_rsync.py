@@ -6,8 +6,9 @@ import tempfile
 import time
 
 from studip_sync.config import CONFIG
+from studip_sync.logins import LoginError
 from studip_sync.plugins.plugins import PLUGINS
-from studip_sync.session import Session, DownloadError, LoginError, MissingFeatureError, \
+from studip_sync.session import Session, DownloadError, MissingFeatureError, \
     MissingPermissionFolderError
 from studip_sync.parsers import ParserError
 
@@ -199,4 +200,8 @@ class CourseRSync:
             return True
 
         return False
+
+    def check_and_cleanup_form_data(self, form_data_files, form_data_folders):
+        # TODO: Sanitize session data !!!
+        return form_data_files, form_data_folders
 

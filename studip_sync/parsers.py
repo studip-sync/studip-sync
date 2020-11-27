@@ -9,35 +9,6 @@ class ParserError(Exception):
     pass
 
 
-def extract_login_data(html):
-    soup = BeautifulSoup(html, 'lxml')
-
-    response = {}
-
-    for form in soup.find_all('form'):
-        if 'action' in form.attrs:
-            response['action'] = form.attrs['action']
-            response['params'] = {}
-
-            needed_vars = [
-                'security_token',
-                'login_ticket',
-                'resolution',
-                'device_pixel_ratio'
-            ]
-
-            for form_input in form.find_all('input'):
-                if 'name' in form_input.attrs and form_input.attrs['name'] in needed_vars:
-                    if 'value' in form_input.attrs:
-                        response['params'][form_input.attrs['name']] = form_input.attrs['value']
-                    else:
-                        response['params'][form_input.attrs['name']] = ''
-
-            return response
-
-    raise ParserError("login: Couldn't find login data! Is the base url correct?")
-
-
 def extract_files_flat_last_edit(html):
     soup = BeautifulSoup(html, 'lxml')
 
@@ -230,16 +201,16 @@ def extract_media_best_download_link(html):
 def extract_filename_from_headers(headers):
     if not "Content-Disposition" in headers:
         raise ParserError(
-            "media_filename_headers: \"Content-Disposition\" is missing: " + media_hash)
+            "media_filename_headers: \"Content-Disposition\" is missing")
 
     content_disposition = headers["Content-Disposition"]
 
     header_value, header_params = cgi.parse_header(content_disposition)
 
     if not "filename" in header_params:
-        raise ParserError("media_filename_headers: \"filename\" is missing: " + media_hash)
+        raise ParserError("media_filename_headers: \"filename\" is missing")
 
     if header_params["filename"] == "":
-        raise ParserError("media_filename_headers: filename value is empty: " + media_hash)
+        raise ParserError("media_filename_headers: filename value is empty")
 
     return header_params["filename"]
