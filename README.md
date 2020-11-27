@@ -108,4 +108,10 @@ This plugin can add a new task on each successful media download into a list at 
 To use this plugin you need to have a Google Cloud project with Tasks API enabled.
 Download the `credentials.json` from Google Cloud and place it at `.config/studip-sync/google-tasks/credentials.json`.
 Then run `studip-sync --enable-plugin google-tasks` and authenticate this plugin over OAuth with your Google account.
-Finally enter the task list id of your specified task list. For this you need to create a task list at Google Tasks first. 
+Finally enter the task list id of your specified task list. For this you need to create a task list at Google Tasks first.
+
+
+## History
+* **2020 - today**: [@lenke182](https://github.com/lenke182) has taken over development and maintenance of the project.
+* **2015 - 2019**: Developed and maintained by [@woefe](https://github.com/woefe). During that time studip-sync was compatible with Stud.IP deployed at University of Passau.
+
