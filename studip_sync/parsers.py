@@ -14,6 +14,9 @@ def extract_files_flat_last_edit(html):
 
     form = soup.find('form', id="files_table_form")
 
+    if not form:
+        raise ParserError("last_edit: files_table_form not found")
+
     if not "data-files" in form.attrs:
         raise ParserError("last_edit: Missing data-files attribute in form")
 
