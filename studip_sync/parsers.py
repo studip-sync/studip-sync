@@ -85,7 +85,7 @@ def extract_courses(html, only_recent_semester):
         caption = table.find("caption").string.strip()
 
         matcher = re.compile(
-            r"https://studip.uni-goettingen.de/seminar_main.php\?auswahl=[0-9a-f]*$")
+            r"https://.*seminar_main.php\?auswahl=[0-9a-f]*$")
         links = table.find_all("a", href=matcher)
 
         for link in links:
