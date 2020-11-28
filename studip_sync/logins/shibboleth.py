@@ -39,6 +39,9 @@ class ShibbolethLogin(LoginBase):
         with session.session.post(sso_url, data=login_data) as response:
             if not response.ok:
                 raise LoginError("Cannot access SSO server")
+            elif "form-error" in response.text or "Login Failure" in response.text:
+                raise LoginError("Wrong credentials, cannot login")
+
             saml_data = ShibbolethLogin.extract_saml_data(response.text)
 
         with session.session.post(auth_type_data["sso_post_url"], data=saml_data) as response:
