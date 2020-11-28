@@ -12,6 +12,6 @@ setup(
     author=studip_sync.__author__,
     license=studip_sync.__license__,
     scripts=['scripts/studip-sync'],
-    packages=['studip_sync', 'studip_sync.plugins'],
+    packages=['studip_sync', 'studip_sync.plugins', 'studip_sync.logins'],
     install_requires=['beautifulsoup4', 'requests', 'lxml'],
 )
