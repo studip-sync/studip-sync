@@ -9,7 +9,8 @@ LOGIN_PRESETS = [
                 auth_type="general", auth_data={}),
     LoginPreset(name="University of Passau", base_url="https://studip.uni-passau.de/studip/",
                 auth_type="shibboleth", auth_data={
-                    "sso_url": "https://studip.uni-passau.de/studip/index.php?again=yes&sso=shib"
+                    "login_url": "https://studip.uni-passau.de/studip/index.php?again=yes&sso=shib",
+                    "sso_post_url": "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
                 })
 ]
 AUTHENTICATION_TYPES = {"general": GeneralLogin,
