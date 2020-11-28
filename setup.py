@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from setuptools import setup
+from setuptools import setup, find_packages
 import studip_sync
 
 setup(
@@ -12,6 +12,6 @@ setup(
     author=studip_sync.__author__,
     license=studip_sync.__license__,
     scripts=['scripts/studip-sync'],
-    packages=['studip_sync', 'studip_sync.plugins', 'studip_sync.plugins.google-tasks', 'studip_sync.logins'],
+    packages=find_packages("."),
     install_requires=['beautifulsoup4', 'requests', 'lxml'],
 )
