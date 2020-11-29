@@ -10,30 +10,66 @@ class ParserError(Exception):
 
 
 def extract_files_flat_last_edit(html):
+    def extract_json(soup):
+        form = soup.find('form', id="files_table_form")
+
+        if not form:
+            raise ParserError("last_edit: files_table_form not found")
+
+        if not "data-files" in form.attrs:
+            raise ParserError("last_edit: Missing data-files attribute in form")
+
+        form_data_files = json.loads(form.attrs["data-files"])
+
+        file_timestamps = []
+
+        for file_data in form_data_files:
+            if not "chdate" in file_data:
+                raise ParserError("last_edit: No chdate: " + str(file_data.keys()))
+
+            file_timestamps.append(file_data["chdate"])
+
+        if len(file_timestamps) > 0:
+            return max(file_timestamps)
+        else:
+            return 0
+
+    def extract_html_table(soup):
+        for form in soup.find_all('form'):
+            if 'action' in form.attrs:
+                tds = form.find('table').find('tbody').find_all('tr')[0].find_all('td')
+                if len(tds) == 8:
+                    td = tds[6]
+                    if 'data-sort-value' in td.attrs:
+                        try:
+                            return int(td.attrs['data-sort-value'])
+                        except:
+                            raise ParserError("last_edit: Couldn't convert data-sort-value to int")
+                    else:
+                        raise ParserError(
+                            "last_edit: Couldn't find td object with data-sort-value")
+                elif len(tds) == 1 and "Keine Dateien vorhanden." in str(tds[0]):
+                    return 0  # No files, so no information when was the last time a file was edited
+                else:
+                    raise ParserError("last_edit: row doesn't have expected length of cells")
+
+        raise ParserError("last_edit: Found no valid form")
+
     soup = BeautifulSoup(html, 'lxml')
 
-    form = soup.find('form', id="files_table_form")
+    func_attempts = [extract_json, extract_html_table]
 
-    if not form:
-        raise ParserError("last_edit: files_table_form not found")
+    for func_attempt in func_attempts:
+        try:
+            return func_attempt(soup)
+        except ParserError:
+            continue
 
-    if not "data-files" in form.attrs:
-        raise ParserError("last_edit: Missing data-files attribute in form")
+    # Debug statement to identify parser errors
+    print("----------- DEBUG -----------")
+    print(html)
 
-    form_data_files = json.loads(form.attrs["data-files"])
-
-    file_timestamps = []
-
-    for file_data in form_data_files:
-        if not "chdate" in file_data:
-            raise ParserError("last_edit: No chdate: " + str(file_data.keys()))
-
-        file_timestamps.append(file_data["chdate"])
-
-    if len(file_timestamps) > 0:
-        return max(file_timestamps)
-    else:
-        return 0
+    raise ParserError("last_edit: all attempts to extract last edit failed")
 
 
 def extract_files_index_data(html):
