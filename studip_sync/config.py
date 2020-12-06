@@ -1,5 +1,7 @@
 import getpass
 import os
+import shlex
+import subprocess
 
 from studip_sync import get_config_file
 from studip_sync.arg_parser import ARGS
@@ -25,8 +27,9 @@ class Config(JSONConfig):
 
     def _check(self):
         if not self.files_destination and not self.media_destination:
-            raise ConfigError("Both target directories are missing. You can specify the target directories "
-                              "via the commandline or the JSON config file!")
+            raise ConfigError(
+                "Both target directories are missing. You can specify the target directories "
+                "via the commandline or the JSON config file!")
 
         if not self.username:
             raise ConfigError("Username is missing")
@@ -90,13 +93,25 @@ class Config(JSONConfig):
         self._username = self.user_property("login") or input("Username: ")
         return self._username
 
+    def _get_password_command(self):
+        password_command = self.user_property("password_command")
+        if not password_command:
+            return None
+
+        print("Loading password from command...")
+        command_list = shlex.split(password_command)
+        command_output = subprocess.check_output(command_list)
+        if not command_output:
+            return None
+
+        return command_output.decode("utf-8").strip()
 
     @property
     def password(self):
         if self._password:
             return self._password
 
-        self._password = self.user_property("password") or getpass.getpass()
+        self._password = self.user_property("password") or self._get_password_command() or getpass.getpass()
         return self._password
 
     @property
