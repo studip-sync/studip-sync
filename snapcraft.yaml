@@ -15,11 +15,7 @@ parts:
   studip-sync:
     plugin: python
     source: .
-    build-packages:
-        - on armhf: [zlib1g-dev, libxml2-dev, libxslt-dev, python-dev]
-        - on arm64: [zlib1g-dev, libxml2-dev, libxslt-dev, python-dev]
-        - on s390x: [zlib1g-dev, libxml2-dev, libxslt-dev, python-dev]
-        - on ppc64el: [zlib1g-dev, libxml2-dev, libxslt-dev, python-dev]
+    build-packages: [zlib1g-dev, libxml2-dev, libxslt-dev, python-dev]
     stage-packages: [rsync]
 
 apps:
