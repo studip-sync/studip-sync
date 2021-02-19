@@ -10,6 +10,12 @@ description: |
 grade: devel
 confinement: strict
 base: core20
+architectures:
+  - build-on: amd64
+  - build-on: arm64
+  - build-on: armhf
+  - build-on: s390x
+  - build-on: ppc64el
 
 parts:
   studip-sync:
@@ -20,8 +26,8 @@ parts:
 
 apps:
   studip-sync:
-    command: studip-sync
+    command: $SNAP/bin/studip-sync
     environment:
-        LANG: C.UTF-8
-        LC_ALL: C.UTF-8
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
     plugs: [home, network, removable-media]
