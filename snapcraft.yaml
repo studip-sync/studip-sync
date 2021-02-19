@@ -22,7 +22,7 @@ parts:
     plugin: python
     source: .
     build-packages: [zlib1g-dev, libxml2-dev, libxslt-dev, python-dev]
-    stage-packages: [rsync]
+    stage-packages: [rsync, libicu66, libxml2, libxslt1.1]
 
 apps:
   studip-sync:
