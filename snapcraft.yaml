@@ -9,6 +9,7 @@ description: |
 
 grade: devel
 confinement: strict
+base: core20
 
 parts:
   studip-sync:
