@@ -223,7 +223,11 @@ class Session(object):
                 if os.path.exists(filepath):
                     raise FileError("Cannot access filepath since file already exists: " + filepath)
 
-                with open(filepath, "wb") as download_file:
-                    shutil.copyfileobj(response.raw, download_file)
+                try:
+                    with open(filepath, "wb") as download_file:
+                        shutil.copyfileobj(response.raw, download_file)
+                except OSError as e:
+                    os.remove(filepath)
+                    raise e
 
                 self.plugins.hook("hook_media_download_successful", media_filename, course_save_as)
