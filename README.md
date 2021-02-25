@@ -3,7 +3,10 @@
 [![studip-sync](https://snapcraft.io/studip-sync/badge.svg)](https://snapcraft.io/studip-sync)
 
 Download and synchronize files and media from Stud.IP -- the campus management platform deployed at several German universities.
-Note that this project is currently only supported for the *University of Göttingen* but could work at other universities with similar authentication methods.
+
+Note that this project is currently only supported for the *University of Göttingen* and the *University of Passau* but 
+could work at other universities with similar authentication methods. Also StudIP version 4.6 is the only fully supported
+version (but most features will still work with StudIP 4.5).
 
 ## Installation
 
