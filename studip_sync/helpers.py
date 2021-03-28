@@ -5,6 +5,7 @@ import os
 class ConfigError(Exception):
     pass
 
+
 class JSONConfig(object):
     def __init__(self, config_path=None):
         super(JSONConfig, self).__init__()

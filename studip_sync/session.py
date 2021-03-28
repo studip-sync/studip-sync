@@ -13,14 +13,18 @@ from studip_sync.plugins.plugin_list import PluginList
 class SessionError(Exception):
     pass
 
+
 class FileError(Exception):
     pass
+
 
 class MissingFeatureError(Exception):
     pass
 
+
 class MissingPermissionFolderError(Exception):
     pass
+
 
 class DownloadError(SessionError):
     pass
@@ -105,7 +109,8 @@ class Session(object):
         if last_edit == 0:
             print("\tLast file edit couldn't be detected!")
         else:
-            print("\tLast file edit: {}".format(time.strftime("%d.%m.%Y %H:%M", time.gmtime(last_edit))))
+            print("\tLast file edit: {}".format(
+                time.strftime("%d.%m.%Y %H:%M", time.gmtime(last_edit))))
         return last_edit == 0 or last_edit > last_sync
 
     def download(self, course_id, workdir, sync_only=None):
@@ -154,7 +159,8 @@ class Session(object):
                 if response.status_code == 403 and "Documents" in response.text:
                     raise MissingFeatureError("This course has no files")
                 elif response.status_code == 403 and "Zugriff verweigert" in response.text:
-                    raise MissingPermissionFolderError("You are missing the required pemissions to view this folder")
+                    raise MissingPermissionFolderError(
+                        "You are missing the required pemissions to view this folder")
                 else:
                     raise DownloadError("Cannot access course files/files_index page")
             return parsers.extract_files_index_data(response.text)
@@ -182,7 +188,8 @@ class Session(object):
         for media_file in media_files:
             media_hash = media_file[0]
             media_player_url_relative = media_file[1]
-            media_player_url = requests.compat.urljoin(mediacast_list_url, media_player_url_relative)
+            media_player_url = requests.compat.urljoin(mediacast_list_url,
+                                                       media_player_url_relative)
 
             # files are saved as "{hash}-{filename}"
 
@@ -204,10 +211,11 @@ class Session(object):
                 if not response.ok:
                     raise DownloadError("Cannot access media file page: " + media_hash)
 
-                download_media_url_relative = parsers.extract_media_best_download_link(response.text)
+                download_media_url_relative = parsers.extract_media_best_download_link(
+                    response.text)
 
-                download_media_url = requests.compat.urljoin(media_player_url, download_media_url_relative)
-
+                download_media_url = requests.compat.urljoin(media_player_url,
+                                                             download_media_url_relative)
 
             with self.session.get(download_media_url, stream=True) as response:
                 if not response.ok:
@@ -221,7 +229,8 @@ class Session(object):
                 filepath = os.path.join(media_workdir, filename)
 
                 if os.path.exists(filepath):
-                    raise FileError("Cannot access filepath since file already exists: " + filepath)
+                    raise FileError(
+                        "Cannot access filepath since file already exists: " + filepath)
 
                 try:
                     with open(filepath, "wb") as download_file:

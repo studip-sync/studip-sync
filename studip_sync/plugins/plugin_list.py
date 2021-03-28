@@ -3,8 +3,11 @@ from studip_sync.plugins.plugin_loader import PluginLoader
 
 class PluginList(list):
 
-    def __init__(self, plugins=[], config_path=""):
+    def __init__(self, plugins=None, config_path=""):
         super(PluginList, self).__init__()
+
+        if plugins is None:
+            plugins = []
 
         for plugin_name in plugins:
             plugin = PluginLoader.load_plugin(plugin_name, config_path)

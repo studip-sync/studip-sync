@@ -12,8 +12,10 @@ from google.auth.transport.requests import Request
 
 SCOPES = ['https://www.googleapis.com/auth/tasks']
 
+
 class CredsError(PermissionError):
     pass
+
 
 def isiterable(obj):
     try:
@@ -22,6 +24,7 @@ def isiterable(obj):
         return False
     else:
         return True
+
 
 class PluginConfig(JSONConfig):
 
@@ -49,6 +52,7 @@ class PluginConfig(JSONConfig):
         # access ignore_filetype once to check if valid property
         if self.ignore_filetype:
             pass
+
 
 class Plugin(PluginBase):
 
@@ -146,5 +150,3 @@ class Plugin(PluginBase):
 
         self.print("Inserting new task: " + title)
         return self.service.tasks().insert(tasklist=self.config.task_list_id, body=body).execute()
-
-

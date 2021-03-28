@@ -3,8 +3,10 @@ import os
 from studip_sync.constants import CONFIG_FILENAME
 from studip_sync.helpers import JSONConfig
 
+
 class PluginError(Exception):
     pass
+
 
 class PluginConfigError(Exception):
     pass
@@ -27,15 +29,16 @@ class PluginBase(object):
 
     def hook_start(self):
         if not os.path.exists(self.config_dir):
-            raise PluginConfigError(self.plugin_name + ": config file is missing at " + self.config_dir)
+            raise PluginConfigError(
+                self.plugin_name + ": config file is missing at " + self.config_dir)
 
         self.config = self.config_class(self.config_filename)
 
     def hook_media_download_successful(self, filename, course_save_as):
         pass
 
-    def print(self, str):
-        print("[" + self.plugin_name + "] " + str)
+    def print(self, message):
+        print("[" + self.plugin_name + "] " + message)
 
     def __enter__(self):
         return self

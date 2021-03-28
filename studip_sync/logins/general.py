@@ -33,9 +33,9 @@ class GeneralLogin(LoginBase):
             elif "messagebox_error" in response.text:
                 raise LoginError("Wrong credentials, cannot login")
 
-        #Test if logged in
+        # Test if logged in
         with session.session.post(session.url.studip_main()) as response:
-            if not response.ok or not "Veranstaltungen" in response.text:
+            if not response.ok or "Veranstaltungen" not in response.text:
                 raise LoginError("Cannot access Stud.IP main page")
 
     @staticmethod

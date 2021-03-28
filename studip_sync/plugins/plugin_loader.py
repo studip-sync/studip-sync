@@ -4,6 +4,7 @@ from studip_sync.plugins import PluginError
 
 PACKAGE = "studip_sync.plugins"
 
+
 class PluginLoader(object):
     @staticmethod
     def load_plugin(plugin_name, config_path):
