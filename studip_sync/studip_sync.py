@@ -44,7 +44,8 @@ class StudipSync(object):
         with Session(base_url=CONFIG.base_url, plugins=PLUGINS) as session:
             print("Logging in...")
             try:
-                session.login(CONFIG.auth_type, CONFIG.auth_type_data, CONFIG.username, CONFIG.password)
+                session.login(CONFIG.auth_type, CONFIG.auth_type_data, CONFIG.username,
+                              CONFIG.password)
             except (LoginError, ParserError) as e:
                 print("Login failed!")
                 print(e)
@@ -52,7 +53,6 @@ class StudipSync(object):
 
             print("Downloading course list...")
 
-            courses = []
             try:
                 courses = list(session.get_courses(sync_recent))
             except (LoginError, ParserError) as e:
@@ -77,7 +77,7 @@ class StudipSync(object):
                             extractor.extract(zip_location, course["save_as"])
                         else:
                             print("\tSkipping this course...")
-                    except MissingFeatureError as e:
+                    except MissingFeatureError:
                         # Ignore if there are no files
                         pass
                     except DownloadError as e:
@@ -94,7 +94,7 @@ class StudipSync(object):
                         media_course_dir = os.path.join(self.media_destination_dir, course["save_as"])
 
                         session.download_media(course["course_id"], media_course_dir, course["save_as"])
-                    except MissingFeatureError as e:
+                    except MissingFeatureError:
                         # Ignore if there is no media
                         pass
                     except DownloadError as e:

@@ -32,7 +32,8 @@ class StudIPRSync(object):
         with Session(base_url=CONFIG.base_url, plugins=PLUGINS) as session:
             print("Logging in...")
             try:
-                session.login(CONFIG.auth_type, CONFIG.auth_type_data, CONFIG.username, CONFIG.password)
+                session.login(CONFIG.auth_type, CONFIG.auth_type_data, CONFIG.username,
+                              CONFIG.password)
             except (LoginError, ParserError) as e:
                 print("Login failed!")
                 print(e)
@@ -57,8 +58,9 @@ class StudIPRSync(object):
 
                 if self.files_destination_dir:
                     try:
-                        CourseRSync(self.files_destination_dir, session, self.workdir, course, sync_fully).download()
-                    except MissingFeatureError as e:
+                        CourseRSync(self.files_destination_dir, session, self.workdir, course,
+                                    sync_fully).download()
+                    except MissingFeatureError:
                         # Ignore if there are no files
                         pass
                     except DownloadError as e:
@@ -74,7 +76,7 @@ class StudIPRSync(object):
                                                         course["save_as"])
 
                         session.download_media(course["course_id"], media_course_dir, course["save_as"])
-                    except MissingFeatureError as e:
+                    except MissingFeatureError:
                         # Ignore if there is no media
                         pass
                     except DownloadError as e:
@@ -95,6 +97,48 @@ class StudIPRSync(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         self.cleanup()
+
+
+def check_and_cleanup_form_data(form_data_files, form_data_folders):
+    # TODO: Sanitize session data !!!
+    return form_data_files, form_data_folders
+
+
+def log(message, flush=False):
+    if flush:
+        print("\t\t" + message, end="\r", flush=True)
+    else:
+        print("\t\t" + message)
+
+
+def is_file_new(file, file_path):
+    if not file["size"]:
+        # If there is no size, skip this file, since it cant be downloaded
+        return False
+
+    try:
+        chdate = int(file["chdate"])
+        size = int(file["size"])
+    except ValueError:
+        print(file)
+        raise ParserError("File attributes are invalid")
+
+    if not os.path.exists(file_path):
+        log("File changed: new: {}".format(file_path))
+        return True
+
+    file_size = os.path.getsize(file_path)
+    file_time = int(os.path.getmtime(file_path))
+
+    if chdate > file_time:
+        log("File changed: time: {} - {} : {}".format(chdate, file_time, file_path))
+        return True
+
+    if not size == file_size:
+        log("File changed: size: {} - {} : {}".format(size, file_size, file_path))
+        return True
+
+    return False
 
 
 class CourseRSync:
@@ -120,34 +164,28 @@ class CourseRSync:
 
         return self.session.check_course_new_files(self.course_id, CONFIG.last_sync)
 
-    def log(self, message, flush=False):
-        if flush:
-            print("\t\t" + message, end="\r", flush=True)
-        else:
-            print("\t\t" + message)
-
     def download_recursive(self, folder_id=None, folder_path_relative=""):
         try:
             form_data_files, form_data_folders = self.session.get_files_index(self.course_id, folder_id)
-        except MissingPermissionFolderError as e:
-            self.log("Couldn't view the following folder because of missing permissions: " + folder_path_relative)
+        except MissingPermissionFolderError:
+            log("Couldn't view the following folder because of missing permissions: " + folder_path_relative)
             return
 
-        # TODO: Sanitize session data !!!
+        form_data_files, form_data_folders = check_and_cleanup_form_data(form_data_files, form_data_folders)
 
         for file_data in form_data_files:
             folder_absolute = os.path.join(self.root_folder, folder_path_relative)
             file_path = os.path.join(folder_absolute, file_data["name"])
-            if self.is_file_new(file_data, file_path):
-                self.log("Downloading: {}: {}".format(file_data["id"], file_data["name"]))
+            if is_file_new(file_data, file_path):
+                log("Downloading: {}: {}".format(file_data["id"], file_data["name"]))
 
                 download_url = file_data["download_url"]
-                tempfile = os.path.join(self.workdir, file_data["id"])
-                self.session.download_file(download_url, tempfile)
+                target_file = os.path.join(self.workdir, file_data["id"])
+                self.session.download_file(download_url, target_file)
 
                 file_size = int(file_data["size"])
-                tempfile_size = os.path.getsize(tempfile)
-                if tempfile_size != file_size:
+                target_file_size = os.path.getsize(target_file)
+                if target_file_size != file_size:
                     raise DownloadError("File size didn't match expected file size: " + file_path)
 
                 file_path_base, file_path_name = os.path.split(file_path)
@@ -160,48 +198,14 @@ class CourseRSync:
                     os.makedirs(file_path_base, exist_ok=True)
 
                 if os.path.exists(file_path):
-                    raise DownloadError("File exists already, even after moving it away: " + file_path)
+                    raise DownloadError("File exists already, even after moving it away: " +
+                                        file_path)
 
-                shutil.copyfile(tempfile, file_path)
-
-
+                shutil.copyfile(target_file, file_path)
 
         for folder_data in form_data_folders:
             new_folder_path_relative = os.path.join(folder_path_relative, folder_data["name"])
 
             # self.log("Accessing folder: " + folder_data["id"] + ": " + folder_data["name"])
             self.download_recursive(folder_data["id"], new_folder_path_relative)
-
-    def is_file_new(self, file, file_path):
-        if not file["size"]:
-            # If there is no size, skip this file, since it cant be downloaded
-            return False
-
-        try:
-            chdate = int(file["chdate"])
-            size = int(file["size"])
-        except ValueError as e:
-            print(file)
-            raise ParserError("File attributes are invalid")
-
-        if not os.path.exists(file_path):
-            self.log("File changed: new: {}".format(file_path))
-            return True
-
-        file_size = os.path.getsize(file_path)
-        file_time = int(os.path.getmtime(file_path))
-
-        if chdate > file_time:
-            self.log("File changed: time: {} - {} : {}".format(chdate, file_time, file_path))
-            return True
-
-        if not size == file_size:
-            self.log("File changed: size: {} - {} : {}".format(size, file_size, file_path))
-            return True
-
-        return False
-
-    def check_and_cleanup_form_data(self, form_data_files, form_data_folders):
-        # TODO: Sanitize session data !!!
-        return form_data_files, form_data_folders
 
