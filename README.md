@@ -5,7 +5,7 @@
 Download and synchronize files and media from Stud.IP -- the campus management platform deployed at several German universities.
 
 Note that this project is currently only supported for the *University of Göttingen* and the *University of Passau* but 
-could work at other universities with similar authentication methods. Also StudIP version 4.6 is the only fully supported
+could work at other universities with similar authentication methods. Also, StudIP version 4.6 is the only fully supported
 version (but most features will still work with StudIP 4.5).
 
 ## Installation
@@ -67,7 +67,7 @@ If you omit the `login` or `password`, studip-sync will ask for them interactive
 ### Full sync instead of incremental sync
 
 studip-sync checks if new files have been edited since the last sync to limit the data which needs to be downloaded on every sync.
-If you don't want this happen and prefer to always download all data, use:
+If you don't want this to happen and prefer to always download all data, use:
 ```shell
 ./studip_sync.py --full
 ```
@@ -111,7 +111,7 @@ This plugin can add a new task on each successful media download into a list at 
 To use this plugin you need to have a Google Cloud project with Tasks API enabled.
 Download the `credentials.json` from Google Cloud and place it at `.config/studip-sync/google-tasks/credentials.json`.
 Then run `studip-sync --enable-plugin google-tasks` and authenticate this plugin over OAuth with your Google account.
-Finally enter the task list id of your specified task list. For this you need to create a task list at Google Tasks first.
+Finally, enter the task list id of your specified task list. For this you need to create a task list at Google Tasks first.
 
 
 ## History
