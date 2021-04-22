@@ -1,8 +1,9 @@
-import re
-import urllib
-from bs4 import BeautifulSoup
 import cgi
 import json
+import re
+import urllib
+
+from bs4 import BeautifulSoup
 
 
 class ParserError(Exception):
@@ -119,9 +120,11 @@ def extract_courses(html, only_recent_semester):
         if only_recent_semester and i > 0:
             continue
 
+        j = len(tables) - i
+
         table = tables[i]
 
-        caption = table.find("caption").string.strip()
+        semester = table.find("caption").string.strip()
 
         matcher = re.compile(
             r"https://.*seminar_main.php\?auswahl=[0-9a-f]*$")
@@ -138,7 +141,8 @@ def extract_courses(html, only_recent_semester):
             yield {
                 "course_id": course_id,
                 "save_as": save_as,
-                "semester": caption
+                "semester": semester,
+                "semester_id": j
             }
 
 

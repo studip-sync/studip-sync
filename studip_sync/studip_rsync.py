@@ -1,4 +1,3 @@
-
 from datetime import datetime
 import os
 import shutil
@@ -56,9 +55,13 @@ class StudIPRSync(object):
                 course = courses[i]
                 print("{}) {}: {}".format(i + 1, course["semester"], course["save_as"]))
 
+                course_save_as = get_course_save_as(course)
+
                 if self.files_destination_dir:
                     try:
-                        CourseRSync(self.files_destination_dir, session, self.workdir, course,
+                        files_root_dir = os.path.join(self.files_destination_dir, course_save_as)
+
+                        CourseRSync(session, self.workdir, files_root_dir, course,
                                     sync_fully).download()
                     except MissingFeatureError:
                         # Ignore if there are no files
@@ -72,10 +75,11 @@ class StudIPRSync(object):
                     try:
                         print("\tSyncing media files...")
 
-                        media_course_dir = os.path.join(self.media_destination_dir,
-                                                        course["save_as"])
+                        media_root_dir = os.path.join(self.media_destination_dir,
+                                                      course_save_as)
 
-                        session.download_media(course["course_id"], media_course_dir, course["save_as"])
+                        session.download_media(course["course_id"], media_root_dir,
+                                               course["save_as"])
                     except MissingFeatureError:
                         # Ignore if there is no media
                         pass
@@ -141,14 +145,23 @@ def is_file_new(file, file_path):
     return False
 
 
+def get_course_save_as(course):
+    if CONFIG.use_new_file_structure:
+        save_as_semester = course["semester"].replace("/", "--")
+        save_as_semester = "{} - {}".format(course["semester_id"], save_as_semester)
+
+        return os.path.join(save_as_semester, course["save_as"])
+    else:
+        return course["save_as"]
+
+
 class CourseRSync:
 
-    def __init__(self, files_destination, session, workdir, course, sync_fully):
+    def __init__(self, session, workdir, root_folder, course, sync_fully):
         self.session = session
         self.workdir = workdir
         self.course_id = course["course_id"]
-        self.course_save_as = course["save_as"]
-        self.root_folder = os.path.join(files_destination, self.course_save_as)
+        self.root_folder = root_folder
         self.sync_fully = sync_fully
 
     def download(self):
@@ -166,12 +179,14 @@ class CourseRSync:
 
     def download_recursive(self, folder_id=None, folder_path_relative=""):
         try:
-            form_data_files, form_data_folders = self.session.get_files_index(self.course_id, folder_id)
+            form_data_files, form_data_folders = self.session.get_files_index(self.course_id,
+                                                                              folder_id)
         except MissingPermissionFolderError:
             log("Couldn't view the following folder because of missing permissions: " + folder_path_relative)
             return
 
-        form_data_files, form_data_folders = check_and_cleanup_form_data(form_data_files, form_data_folders)
+        form_data_files, form_data_folders = check_and_cleanup_form_data(form_data_files,
+                                                                         form_data_folders)
 
         for file_data in form_data_files:
             folder_absolute = os.path.join(self.root_folder, folder_path_relative)
@@ -208,4 +223,3 @@ class CourseRSync:
 
             # self.log("Accessing folder: " + folder_data["id"] + ": " + folder_data["name"])
             self.download_recursive(folder_data["id"], new_folder_path_relative)
-

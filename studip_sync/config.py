@@ -160,6 +160,13 @@ class Config(JSONConfig):
 
         return os.path.expanduser(media_destination)
 
+    @property
+    def use_new_file_structure(self):
+        if not self.config:
+            return False
+
+        return self.config.get("use_new_file_structure", False)
+
 
 try:
     CONFIG = Config()
