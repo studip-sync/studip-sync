@@ -184,13 +184,13 @@ class Session(object):
             media_player_url_relative = media_file[1]
             media_player_url = requests.compat.urljoin(mediacast_list_url, media_player_url_relative)
 
-            # files are saved as "{hash}-{filename}"
+            # files are saved as "{filename}-{hash}.{file extension}"
 
             found_existing_file = False
 
             for workdir_filename in workdir_files:
                 workdir_filename_split = workdir_filename.split("-")
-                if len(workdir_filename_split) > 0 and workdir_filename_split[0] == media_hash:
+                if len(workdir_filename_split) > 0 and ( workdir_filename_split[-1].split(".")[0] == media_hash or workdir_filename_split[0] == media_hash):
                     found_existing_file = True
                     break
 
@@ -214,9 +214,17 @@ class Session(object):
                     print("\t\tCannot download media file: " + str(response))
                     continue
 
-                media_filename = parsers.extract_filename_from_headers(response.headers)
+                media_full_filename = parsers.extract_filename_from_headers(response.headers).split(".")
 
-                filename = media_hash + "-" + media_filename
+                media_file_extension = media_full_filename.pop(-1)
+
+                # reintroduce missing '.' in the middle of the filename
+                for part in media_full_filename[:-1] :
+                    part = part + "."
+
+                media_filename = "".join(media_full_filename)
+
+                filename = media_filename + "-" + media_hash + "." + media_file_extension
 
                 filepath = os.path.join(media_workdir, filename)
 
