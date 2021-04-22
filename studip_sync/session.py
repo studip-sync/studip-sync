@@ -239,4 +239,5 @@ class Session(object):
                     os.remove(filepath)
                     raise e
 
-                self.plugins.hook("hook_media_download_successful", media_filename, course_save_as)
+                self.plugins.hook("hook_media_download_successful", media_filename, course_save_as,
+                                  filepath)
