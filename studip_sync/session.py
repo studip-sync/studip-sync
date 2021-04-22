@@ -191,13 +191,16 @@ class Session(object):
             media_player_url = requests.compat.urljoin(mediacast_list_url,
                                                        media_player_url_relative)
 
-            # files are saved as "{hash}-{filename}"
+            # files are saved as "{filename}-{hash}.{extension}"
+            # older version might have used the format "{hash}-{filename}.{extension}"
 
             found_existing_file = False
 
             for workdir_filename in workdir_files:
                 workdir_filename_split = workdir_filename.split("-")
-                if len(workdir_filename_split) > 0 and workdir_filename_split[0] == media_hash:
+
+                if workdir_filename_split[0] == media_hash or \
+                        workdir_filename_split[-1].split(".")[0] == media_hash:
                     found_existing_file = True
                     break
 
@@ -224,7 +227,11 @@ class Session(object):
 
                 media_filename = parsers.extract_filename_from_headers(response.headers)
 
-                filename = media_hash + "-" + media_filename
+                media_filename_split = media_filename.split(".")
+                media_filename_extension = media_filename_split.pop()
+                media_filename_name = ".".join(media_filename_split)
+
+                filename = media_filename_name + "-" + media_hash + "." + media_filename_extension
 
                 filepath = os.path.join(media_workdir, filename)
 
