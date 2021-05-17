@@ -3,6 +3,8 @@ import os
 import shutil
 import tempfile
 import time
+import unicodedata
+import string
 
 from studip_sync.config import CONFIG
 from studip_sync.logins import LoginError
@@ -103,9 +105,50 @@ class StudIPRSync(object):
         self.cleanup()
 
 
+UNICODE_NORMALIZE_MODE = "NFKC"
+
+
 def check_and_cleanup_form_data(form_data_files, form_data_folders):
-    # TODO: Sanitize session data !!!
-    return form_data_files, form_data_folders
+    form_data_files_new = []
+    for form_data in form_data_files:
+        try:
+            form_id = form_data["id"]
+            if not all(c in string.hexdigits for c in form_id):
+                raise ParserError("id is not hexadecimal")
+
+            if "size" not in form_data or form_data["size"] is None:
+                if form_data["icon"] != "link-extern":
+                    print(form_data)
+                log("Found unsupported file: {}".format(form_data["name"]))
+                continue
+
+            form_data_files_new.append({
+                "name": unicodedata.normalize(UNICODE_NORMALIZE_MODE, form_data["name"]).replace("/", "--"),
+                "id": form_id,
+                "download_url": form_data["download_url"],
+                "size": int(form_data["size"]),
+                "chdate": int(form_data["chdate"])
+            })
+        except Exception as e:
+            print(form_data)
+            raise ParserError("File attributes are invalid: {}".format(e))
+
+    form_data_folders_new = []
+    for form_data in form_data_folders:
+        try:
+            form_id = form_data["id"]
+            if not all(c in string.hexdigits for c in form_id):
+                raise ValueError("id is not hexadecimal")
+
+            form_data_folders_new.append({
+                "name": unicodedata.normalize(UNICODE_NORMALIZE_MODE, form_data["name"]).replace("/", "--"),
+                "id": form_id
+            })
+        except Exception as e:
+            print(form_data)
+            raise ParserError("Folder attributes are invalid: {}".format(e))
+
+    return form_data_files_new, form_data_folders_new
 
 
 def log(message, flush=False):
@@ -120,24 +163,21 @@ def is_file_new(file, file_path):
         # If there is no size, skip this file, since it cant be downloaded
         return False
 
-    try:
-        chdate = int(file["chdate"])
-        size = int(file["size"])
-    except ValueError:
-        print(file)
-        raise ParserError("File attributes are invalid")
 
     if not os.path.exists(file_path):
         log("File changed: new: {}".format(file_path))
         return True
 
-    file_size = os.path.getsize(file_path)
     file_time = int(os.path.getmtime(file_path))
 
+    chdate = file["chdate"]
     if chdate > file_time:
         log("File changed: time: {} - {} : {}".format(chdate, file_time, file_path))
         return True
 
+    file_size = os.path.getsize(file_path)
+
+    size = file["size"]
     if not size == file_size:
         log("File changed: size: {} - {} : {}".format(size, file_size, file_path))
         return True

@@ -117,3 +117,4 @@ stage/
 prime/
 *.tar.bz2
 *.snap
+/.idea/
