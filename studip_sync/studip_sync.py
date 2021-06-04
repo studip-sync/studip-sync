@@ -100,6 +100,12 @@ class StudipSync(object):
                     except DownloadError as e:
                         print("\tDownload of media failed: " + str(e))
                         status_code = 2
+                    except ParserError as e:
+                        print("\tDownload of media failed: " + str(e))
+                        if status_code != 0:
+                            raise e
+                        else:
+                            status_code = 2
 
         if self.files_destination_dir:
             print("Synchronizing with existing files...")
