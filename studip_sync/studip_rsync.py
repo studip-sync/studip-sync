@@ -89,6 +89,12 @@ class StudIPRSync(object):
                         print("\tDownload of media failed: " + str(e))
                         status_code = 2
                         raise e
+                    except ParserError as e:
+                        print("\tDownload of media failed: " + str(e))
+                        if status_code != 0:
+                            raise e
+                        else:
+                            status_code = 2
 
         if self.files_destination_dir and status_code == 0:
             CONFIG.update_last_sync(int(time.time()))
