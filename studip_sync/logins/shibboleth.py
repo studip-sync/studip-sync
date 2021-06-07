@@ -68,28 +68,25 @@ class ShibbolethLogin(LoginBase):
         raise ParserError("Could not find login form")
 
     @staticmethod
+    def _extract_form_value(soup, name):
+        field = soup.find(attrs={"name": name})
+
+        if field is None:
+            raise ParserError("Could not find value for field: name=" + name)
+
+        return field.attrs.get("value", "")
+
+    @staticmethod
     def extract_saml_data(html):
         soup = BeautifulSoup(html, 'lxml')
 
-        def _extract_value(name):
-            names = soup.find_all(attrs={"name": name})
-
-            if len(names) != 1:
-                raise ParserError("Could not parse SAML form")
-
-            return names.pop().attrs.get("value", "")
-
         return {
-            "RelayState": _extract_value("RelayState"),
-            "SAMLResponse": _extract_value("SAMLResponse")
+            "RelayState": ShibbolethLogin._extract_form_value(soup, "RelayState"),
+            "SAMLResponse": ShibbolethLogin._extract_form_value(soup, "SAMLResponse")
         }
 
     @staticmethod
     def extract_csrf_token(html):
         soup = BeautifulSoup(html, 'lxml')
-        csrf_token_field = soup.find(attrs={"name": "csrf_token"})
 
-        if csrf_token_field is None:
-            raise ParserError("Could not parse csrf_token")
-
-        return csrf_token_field.attrs.get("value", "")
+        return ShibbolethLogin._extract_form_value(soup, "csrf_token")
