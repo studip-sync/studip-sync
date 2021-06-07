@@ -7,6 +7,7 @@ import requests
 
 from studip_sync import parsers
 from studip_sync.constants import URL_BASEURL_DEFAULT, AUTHENTICATION_TYPES
+from studip_sync.parsers import ParserError
 from studip_sync.plugins.plugin_list import PluginList
 
 
@@ -186,8 +187,9 @@ class Session(object):
         print("\tFound {} media files".format(len(media_files)))
 
         for media_file in media_files:
-            media_hash = media_file[0]
-            media_player_url_relative = media_file[1]
+            media_hash = media_file["hash"]
+            media_type = media_file["type"]
+            media_player_url_relative = media_file["media_url"]
             media_player_url = requests.compat.urljoin(mediacast_list_url,
                                                        media_player_url_relative)
 
@@ -210,15 +212,20 @@ class Session(object):
 
             print("\t\tDownloading " + media_hash)
 
-            with self.session.get(media_player_url) as response:
-                if not response.ok:
-                    raise DownloadError("Cannot access media file page: " + media_hash)
+            if media_type == "player":
+                with self.session.get(media_player_url) as response:
+                    if not response.ok:
+                        raise DownloadError("Cannot access media file page: " + media_hash)
 
-                download_media_url_relative = parsers.extract_media_best_download_link(
-                    response.text)
+                    download_media_url_relative = parsers.extract_media_best_download_link(
+                        response.text)
 
-                download_media_url = requests.compat.urljoin(media_player_url,
-                                                             download_media_url_relative)
+                    download_media_url = requests.compat.urljoin(media_player_url,
+                                                                 download_media_url_relative)
+            elif media_type == "direct_download":
+                download_media_url = media_player_url
+            else:
+                raise ParserError("media_type is not a valid type")
 
             with self.session.get(download_media_url, stream=True) as response:
                 if not response.ok:

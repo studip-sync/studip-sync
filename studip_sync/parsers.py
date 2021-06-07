@@ -157,20 +157,25 @@ def extract_media_list(html):
 
         media_hash = table["id"]
 
-        a_element = table.select_one("div.overlay-curtain > a")
+        a_element_overlay_curtain = table.select_one("div.overlay-curtain > a")
+        a_element_media_table_infos = table.select_one("div.media-table-infos > div > a")
 
-        if not a_element:
-            raise ParserError("media_list: a_element is missing")
+        if not a_element_media_table_infos:
+            raise ParserError("media_list: a_element_media_table_infos is missing")
 
-        if "href" not in a_element.attrs:
-            raise ParserError("media_list: 'href' is missing from a_element")
+        if "href" not in a_element_media_table_infos.attrs:
+            raise ParserError("media_list: 'href' is missing from a_element_media_table_infos")
 
-        media_url = a_element["href"]
+        media_url = a_element_media_table_infos["href"]
 
         if not media_hash or not media_url:
             raise ParserError("media_list: hash or url is empty")
 
-        media_files.append((media_hash, media_url))
+        media_files.append({
+            "hash": media_hash,
+            "media_url": media_url,
+            "type": "direct_download" if a_element_overlay_curtain is None else "player"
+        })
 
     return media_files
 
