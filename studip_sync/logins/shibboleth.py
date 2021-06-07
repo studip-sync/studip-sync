@@ -29,8 +29,10 @@ class ShibbolethLogin(LoginBase):
                 raise LoginError("Cannot access Stud.IP login page")
             sso_url_relative = ShibbolethLogin.extract_sso_url(response.text)
             sso_url = urllib.parse.urljoin(response.url, sso_url_relative)
+            csrf_token = ShibbolethLogin.extract_csrf_token(response.text)
 
         login_data = {
+            "csrf_token": csrf_token,
             "j_username": username,
             "j_password": password,
             "donotcache": 1,
@@ -81,3 +83,13 @@ class ShibbolethLogin(LoginBase):
             "RelayState": _extract_value("RelayState"),
             "SAMLResponse": _extract_value("SAMLResponse")
         }
+
+    @staticmethod
+    def extract_csrf_token(html):
+        soup = BeautifulSoup(html, 'lxml')
+        csrf_token_field = soup.find(attrs={"name": "csrf_token"})
+
+        if csrf_token_field is None:
+            raise ParserError("Could not parse csrf_token")
+
+        return csrf_token_field.attrs.get("value", "")
