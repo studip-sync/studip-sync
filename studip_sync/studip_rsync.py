@@ -6,6 +6,7 @@ import time
 import unicodedata
 import string
 
+from studip_sync.arg_parser import ARGS
 from studip_sync.config import CONFIG
 from studip_sync.logins import LoginError
 from studip_sync.plugins.plugins import PLUGINS
@@ -122,9 +123,10 @@ def check_and_cleanup_form_data(form_data_files, form_data_folders):
             if not all(c in string.hexdigits for c in form_id):
                 raise ParserError("id is not hexadecimal")
 
-            if "size" not in form_data or form_data["size"] is None:
-                if form_data["icon"] != "link-extern":
-                    print(form_data)
+            # TODO: support links by saving them as .url files
+            if "size" not in form_data or form_data["size"] is None or form_data["icon"] == "link-extern":
+                if ARGS.v:
+                    print("[Debug] " + str(form_data))
                 log("Found unsupported file: {}".format(form_data["name"]))
                 continue
 
@@ -247,6 +249,8 @@ class CourseRSync:
                 file_size = int(file_data["size"])
                 target_file_size = os.path.getsize(target_file)
                 if target_file_size != file_size:
+                    if ARGS.v:
+                        print("[Debug] " + str(form_data_files))
                     raise DownloadError("File size didn't match expected file size: " + file_path)
 
                 file_path_base, file_path_name = os.path.split(file_path)
