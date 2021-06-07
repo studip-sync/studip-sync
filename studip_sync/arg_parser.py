@@ -39,7 +39,7 @@ def parse_args():
                         help="disables a plugin")
 
     parser.add_argument("-v", action="store_true",
-                        help="Verbose (show debug output)")
+                        help="show debug output")
 
     return parser.parse_args()
 
