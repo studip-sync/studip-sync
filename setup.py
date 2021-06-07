@@ -13,5 +13,16 @@ setup(
     license=studip_sync.__license__,
     scripts=['scripts/studip-sync'],
     packages=find_packages("."),
-    install_requires=['beautifulsoup4', 'requests', 'lxml'],
+    install_requires=[
+        'beautifulsoup4',
+        'requests',
+        'lxml'
+    ],
+    extras_require={
+        "google-tasks": [
+            "google-api-python-client",
+            "google-auth-httplib2",
+            "google-auth-oauthlib"
+        ],
+    }
 )
