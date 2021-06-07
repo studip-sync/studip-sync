@@ -190,7 +190,7 @@ class Session(object):
             media_hash = media_file["hash"]
             media_type = media_file["type"]
             media_player_url_relative = media_file["media_url"]
-            media_player_url = requests.compat.urljoin(mediacast_list_url,
+            media_player_url = urllib.parse.urljoin(mediacast_list_url,
                                                        media_player_url_relative)
 
             # files are saved as "{filename}-{hash}.{extension}"
@@ -220,7 +220,7 @@ class Session(object):
                     download_media_url_relative = parsers.extract_media_best_download_link(
                         response.text)
 
-                    download_media_url = requests.compat.urljoin(media_player_url,
+                    download_media_url = urllib.parse.urljoin(media_player_url,
                                                                  download_media_url_relative)
             elif media_type == "direct_download":
                 download_media_url = media_player_url

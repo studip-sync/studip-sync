@@ -16,11 +16,11 @@ SCOPES = ['https://www.googleapis.com/auth/tasks']
 DISPLAY_VIDEO_LENGTH_ALLOWED_FILETYPES = ['mp4']
 
 
-class CredsError(PermissionError):
+class CredentialsError(PermissionError):
     pass
 
 
-def isiterable(obj):
+def is_iterable(obj):
     try:
         iter(obj)
     except TypeError:
@@ -38,7 +38,7 @@ class PluginConfig(JSONConfig):
 
         ignore_filetype = self.config.get("ignore_filetype", [])
 
-        if not isiterable(ignore_filetype):
+        if not is_iterable(ignore_filetype):
             raise ConfigError("ignore_filetype is not iterable")
 
         return ignore_filetype
@@ -79,34 +79,35 @@ class Plugin(PluginBase):
         super(Plugin, self).__init__("google-tasks", config_path, PluginConfig)
         self.token_pickle_path = os.path.join(self.config_dir, "token.pickle")
         self.credentials_path = os.path.join(self.config_dir, "credentials.json")
+        self.service = None
 
     def hook_configure(self):
         super(Plugin, self).hook_configure()
 
-        creds = None
+        credentials = None
         # The file token.pickle stores the user's access and refresh tokens, and is
         # created automatically when the authorization flow completes for the first
         # time.
 
         if os.path.exists(self.token_pickle_path):
             with open(self.token_pickle_path, 'rb') as token:
-                creds = pickle.load(token)
+                credentials = pickle.load(token)
         # If there are no (valid) credentials available, let the user log in.
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+        if not credentials or not credentials.valid:
+            if credentials and credentials.expired and credentials.refresh_token:
+                credentials.refresh(Request())
             else:
                 if not os.path.exists(self.credentials_path):
-                    raise CredsError("Missing credentials.json at " + self.credentials_path)
+                    raise CredentialsError("Missing credentials.json at " + self.credentials_path)
 
                 flow = InstalledAppFlow.from_client_secrets_file(
                     self.credentials_path, SCOPES)
-                creds = flow.run_local_server(port=0)
+                credentials = flow.run_local_server(port=0)
             # Save the credentials for the next run
             with open(self.token_pickle_path, 'wb') as token:
-                pickle.dump(creds, token)
+                pickle.dump(credentials, token)
 
-        service = build('tasks', 'v1', credentials=creds)
+        service = build('tasks', 'v1', credentials=credentials)
 
         # Call the Tasks API
         results = service.tasklists().list(maxResults=10).execute()
@@ -133,19 +134,19 @@ class Plugin(PluginBase):
     def hook_start(self):
         super(Plugin, self).hook_start()
 
-        creds = None
+        credentials = None
 
         if os.path.exists(self.token_pickle_path):
             with open(self.token_pickle_path, 'rb') as token:
-                creds = pickle.load(token)
+                credentials = pickle.load(token)
 
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+        if not credentials or not credentials.valid:
+            if credentials and credentials.expired and credentials.refresh_token:
+                credentials.refresh(Request())
             else:
-                raise CredsError("tasks: couldn't log in")
+                raise CredentialsError("tasks: couldn't log in")
 
-        self.service = build('tasks', 'v1', credentials=creds)
+        self.service = build('tasks', 'v1', credentials=credentials)
 
     def hook_media_download_successful(self, filename, course_save_as, full_filepath):
         file_extension = os.path.splitext(filename)[1][1:]

@@ -1,7 +1,7 @@
 import cgi
 import json
 import re
-import urllib
+import urllib.parse
 
 from bs4 import BeautifulSoup
 
@@ -11,8 +11,8 @@ class ParserError(Exception):
 
 
 def extract_files_flat_last_edit(html):
-    def extract_json(soup):
-        form = soup.find('form', id="files_table_form")
+    def extract_json(s):
+        form = s.find('form', id="files_table_form")
 
         if not form:
             raise ParserError("last_edit: files_table_form not found")
@@ -35,8 +35,8 @@ def extract_files_flat_last_edit(html):
         else:
             return 0
 
-    def extract_html_table(soup):
-        for form in soup.find_all('form'):
+    def extract_html_table(s):
+        for form in s.find_all('form'):
             if 'action' in form.attrs:
                 tds = form.find('table').find('tbody').find_all('tr')[0].find_all('td')
                 if len(tds) == 8:
