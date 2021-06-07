@@ -29,8 +29,10 @@ class ShibbolethLogin(LoginBase):
                 raise LoginError("Cannot access Stud.IP login page")
             sso_url_relative = ShibbolethLogin.extract_sso_url(response.text)
             sso_url = urllib.parse.urljoin(response.url, sso_url_relative)
+            csrf_token = ShibbolethLogin.extract_csrf_token(response.text)
 
         login_data = {
+            "csrf_token": csrf_token,
             "j_username": username,
             "j_password": password,
             "donotcache": 1,
@@ -66,18 +68,25 @@ class ShibbolethLogin(LoginBase):
         raise ParserError("Could not find login form")
 
     @staticmethod
+    def _extract_form_value(soup, name):
+        field = soup.find(attrs={"name": name})
+
+        if field is None:
+            raise ParserError("Could not find value for field: name=" + name)
+
+        return field.attrs.get("value", "")
+
+    @staticmethod
     def extract_saml_data(html):
         soup = BeautifulSoup(html, 'lxml')
 
-        def _extract_value(name):
-            names = soup.find_all(attrs={"name": name})
-
-            if len(names) != 1:
-                raise ParserError("Could not parse SAML form")
-
-            return names.pop().attrs.get("value", "")
-
         return {
-            "RelayState": _extract_value("RelayState"),
-            "SAMLResponse": _extract_value("SAMLResponse")
+            "RelayState": ShibbolethLogin._extract_form_value(soup, "RelayState"),
+            "SAMLResponse": ShibbolethLogin._extract_form_value(soup, "SAMLResponse")
         }
+
+    @staticmethod
+    def extract_csrf_token(html):
+        soup = BeautifulSoup(html, 'lxml')
+
+        return ShibbolethLogin._extract_form_value(soup, "csrf_token")
