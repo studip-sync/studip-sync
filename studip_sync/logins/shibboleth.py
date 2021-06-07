@@ -2,6 +2,7 @@ import urllib.parse
 
 from bs4 import BeautifulSoup
 
+from studip_sync.arg_parser import ARGS
 from studip_sync.logins import LoginBase, LoginError
 from studip_sync.parsers import ParserError
 
@@ -36,7 +37,13 @@ class ShibbolethLogin(LoginBase):
             "_eventId_proceed": ""
         }
 
+        if ARGS.v:
+            print("[Debug] sso_url_relative=" + sso_url_relative)
+            print("[Debug] sso_url=" + sso_url)
+
         with session.session.post(sso_url, data=login_data) as response:
+            if ARGS.v:
+                print("[Debug] " + response.text)
             if not response.ok:
                 raise LoginError("Cannot access SSO server")
             elif "form-error" in response.text or "Login Failure" in response.text:

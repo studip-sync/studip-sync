@@ -38,6 +38,9 @@ def parse_args():
     parser.add_argument("--disable-plugin", metavar="PLUGIN",
                         help="disables a plugin")
 
+    parser.add_argument("-v", action="store_true",
+                        help="Verbose (show debug output)")
+
     return parser.parse_args()
 
 
