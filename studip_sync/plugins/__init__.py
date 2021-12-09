@@ -34,7 +34,7 @@ class PluginBase(object):
 
         self.config = self.config_class(self.config_filename)
 
-    def hook_media_download_successful(self, filename, course_save_as, full_filepath):
+    def hook_file_download_successful(self, filename, course_save_as, full_filepath):
         pass
 
     def print(self, message):

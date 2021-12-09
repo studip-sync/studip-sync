@@ -32,16 +32,16 @@ def is_iterable(obj):
 class PluginConfig(JSONConfig):
 
     @property
-    def ignore_filetype(self):
+    def video_filetype(self):
         if not self.config:
             return
 
-        ignore_filetype = self.config.get("ignore_filetype", [])
+        video_filetype = self.config.get("video_filetype", [])
 
-        if not is_iterable(ignore_filetype):
-            raise ConfigError("ignore_filetype is not iterable")
+        if not is_iterable(video_filetype):
+            raise ConfigError("video_filetype is not iterable")
 
-        return ignore_filetype
+        return video_filetype
 
     @property
     def task_list_id(self):
@@ -59,8 +59,8 @@ class PluginConfig(JSONConfig):
 
     def _check(self):
 
-        # access ignore_filetype once to check if valid property
-        if self.ignore_filetype:
+        # access video_filetype once to check if valid property
+        if self.video_filetype:
             pass
 
 
@@ -148,10 +148,10 @@ class Plugin(PluginBase):
 
         self.service = build('tasks', 'v1', credentials=credentials)
 
-    def hook_media_download_successful(self, filename, course_save_as, full_filepath):
+    def hook_file_download_successful(self, filename, course_save_as, full_filepath):
         file_extension = os.path.splitext(filename)[1][1:]
 
-        if self.config and self.config.ignore_filetype and file_extension in self.config.ignore_filetype:
+        if self.config and self.config.video_filetype and file_extension not in self.config.video_filetype:
             self.print("Skipping task: " + filename)
             return
 

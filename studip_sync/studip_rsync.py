@@ -209,6 +209,7 @@ class CourseRSync:
         self.session = session
         self.workdir = workdir
         self.course_id = course["course_id"]
+        self.course_save_as = course["save_as"]
         self.root_folder = root_folder
         self.sync_fully = sync_fully
 
@@ -267,6 +268,9 @@ class CourseRSync:
                                         file_path)
 
                 shutil.copyfile(target_file, file_path)
+
+                self.session.plugins.hook("hook_file_download_successful", file_data["name"],
+                                          self.course_save_as, file_path)
 
         for folder_data in form_data_folders:
             new_folder_path_relative = os.path.join(folder_path_relative, folder_data["name"])
