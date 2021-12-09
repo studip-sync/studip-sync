@@ -41,7 +41,7 @@ def parse_args():
     parser.add_argument("-v", action="store_true",
                         help="show debug output")
 
-    return parser.parse_args()
+    return parser.parse_known_args()[0]
 
 
 ARGS = parse_args()
