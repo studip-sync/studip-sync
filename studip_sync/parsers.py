@@ -2,7 +2,6 @@ import cgi
 import json
 import re
 import urllib.parse
-import base64
 
 from functools import wraps
 from bs4 import BeautifulSoup
@@ -28,7 +27,7 @@ def try_parser_functions(html, func_attempts):
 
     for func_attempt in func_attempts:
         try:
-            return func_attempt(soup)
+            return func_attempt(html, soup)
         except ParserError:
             continue
 
@@ -41,7 +40,7 @@ class ParserError(Exception):
 
 @log_html_on_exception()
 def extract_files_flat_last_edit(html):
-    def extract_json(s):
+    def extract_json(_, s):
         form = s.find('form', id="files_table_form")
 
         if not form:
@@ -65,7 +64,7 @@ def extract_files_flat_last_edit(html):
         else:
             return 0
 
-    def extract_html_table(s):
+    def extract_html_table(_, s):
         for form in s.find_all('form'):
             if 'action' in form.attrs:
                 tds = form.find('table').find('tbody').find_all('tr')[0].find_all('td')
@@ -254,7 +253,7 @@ def extract_media_best_download_link(html):
         return links[len(links) - 1]
 
 
-    return try_parser_functions(html, [extract_json, extract_html_table])
+    return try_parser_functions(html, [extract_table, extract_iframe, extract_video, extract_video_regex])
 
 
 @log_html_on_exception()

@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 import urllib.parse
+import json
 
 import requests
 
@@ -61,6 +62,15 @@ class URL(object):
 
     def mediacast_list(self):
         return self.__relative_url("plugins.php/mediacastplugin/media/index")
+
+    def files_api_top_folder(self, course_id):
+        return self.__relative_url("api.php/course/{}/top_folder".format(course_id))
+
+    def files_api_folder(self, folder_id):
+        return self.__relative_url("api.php/folder/{}".format(folder_id))
+
+    def files_api_download(self, file_id):
+        return self.__relative_url("api.php/file/{}/download".format(file_id))
 
 
 class Session(object):
@@ -147,6 +157,17 @@ class Session(object):
             with open(tempfile, "wb") as file:
                 shutil.copyfileobj(response.raw, file)
 
+
+    def download_file_api(self, file_id, tempfile):
+        download_url = self.url.files_api_download(file_id)
+        
+        with self.session.get(download_url, stream=True) as response:
+            if not response.ok:
+                raise DownloadError("Cannot download file")
+
+            with open(tempfile, "wb") as file:
+                shutil.copyfileobj(response.raw, file)
+
     def get_files_index(self, course_id, folder_id=None):
         params = {"cid": course_id}
 
@@ -165,6 +186,26 @@ class Session(object):
                 else:
                     raise DownloadError("Cannot access course files/files_index page")
             return parsers.extract_files_index_data(response.text)
+
+    def get_files_index_from_api(self, course_id, folder_id=None):
+        if folder_id:
+            url = self.url.files_api_folder(folder_id)
+        else:
+            url = self.url.files_api_top_folder(course_id)
+
+        with self.session.get(url) as response:
+            if not response.ok:
+                #if response.status_code == 403 and "Documents" in response.text:
+                #    raise MissingFeatureError("This course has no files")
+                #elif response.status_code == 403 and "Zugriff verweigert" in response.text:
+                #    raise MissingPermissionFolderError(
+                #        "You are missing the required pemissions to view this folder")
+                #else:
+                raise DownloadError("Cannot access course files/files_index page")
+
+            res = json.loads(response.text)
+            
+            return res["file_refs"], res["subfolders"]
 
     def download_media(self, course_id, media_workdir, course_save_as):
         params = {"cid": course_id}

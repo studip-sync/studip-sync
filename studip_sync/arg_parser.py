@@ -28,6 +28,9 @@ def parse_args():
     parser.add_argument("--old", action="store_true",
                         help="use older sync client which downloads files in bulk")
 
+    parser.add_argument("--use-api", action="store_true",
+                        help="use older sync client which downloads files in bulk")
+
     # PLUGINS
     parser.add_argument("--enable-plugin", metavar="PLUGIN",
                         help="enables and configures a plugin")
