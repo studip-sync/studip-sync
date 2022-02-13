@@ -2,14 +2,44 @@ import cgi
 import json
 import re
 import urllib.parse
+import base64
 
+from functools import wraps
 from bs4 import BeautifulSoup
+
+def log_html_on_exception():
+    def decorator(func):
+        @wraps(func)
+        def inner(html, *args, **kwargs):
+            try:
+                return func(html, *args, **kwargs)
+            except Exception as e:
+                print(html)
+                
+                raise e
+
+        return inner
+
+    return decorator
+
+
+def try_parser_functions(html, func_attempts):
+    soup = BeautifulSoup(html, 'lxml')
+
+    for func_attempt in func_attempts:
+        try:
+            return func_attempt(soup)
+        except ParserError:
+            continue
+
+    raise ParserError("all attempts to parse data failed")
 
 
 class ParserError(Exception):
     pass
 
 
+@log_html_on_exception()
 def extract_files_flat_last_edit(html):
     def extract_json(s):
         form = s.find('form', id="files_table_form")
@@ -56,27 +86,17 @@ def extract_files_flat_last_edit(html):
 
         raise ParserError("last_edit: Found no valid form")
 
-    soup = BeautifulSoup(html, 'lxml')
 
-    func_attempts = [extract_json, extract_html_table]
-
-    for func_attempt in func_attempts:
-        try:
-            return func_attempt(soup)
-        except ParserError:
-            continue
-
-    # Debug statement to identify parser errors
-    print("----------- DEBUG -----------")
-    print(html)
-
-    raise ParserError("last_edit: all attempts to extract last edit failed")
+    return try_parser_functions(html, [extract_json, extract_html_table])
 
 
+@log_html_on_exception()
 def extract_files_index_data(html):
     soup = BeautifulSoup(html, 'lxml')
 
     form = soup.find('form', id="files_table_form")
+
+    raise ParserError("test")
 
     if "data-files" not in form.attrs:
         raise ParserError("index_data: Missing data-files attribute in form")
@@ -90,6 +110,7 @@ def extract_files_index_data(html):
     return form_data_files, form_data_folders
 
 
+@log_html_on_exception()
 def extract_parent_folder_id(html):
     soup = BeautifulSoup(html, 'lxml')
     folder_ids = soup.find_all(attrs={"name": "parent_folder_id"})
@@ -100,6 +121,7 @@ def extract_parent_folder_id(html):
     return folder_ids.pop().attrs.get("value", "")
 
 
+@log_html_on_exception()
 def extract_csrf_token(html):
     soup = BeautifulSoup(html, 'lxml')
     tokens = soup.find_all("input", attrs={"name": "security_token"})
@@ -110,6 +132,7 @@ def extract_csrf_token(html):
     return tokens.pop().attrs.get("value", "")
 
 
+@log_html_on_exception()
 def extract_courses(html, only_recent_semester):
     soup = BeautifulSoup(html, 'lxml')
 
@@ -146,6 +169,7 @@ def extract_courses(html, only_recent_semester):
             }
 
 
+@log_html_on_exception()
 def extract_media_list(html):
     soup = BeautifulSoup(html, 'lxml')
 
@@ -180,6 +204,7 @@ def extract_media_list(html):
     return media_files
 
 
+@log_html_on_exception()
 def extract_media_best_download_link(html):
     def extract_table(_, s):
         download_options = s.select("table#dllist tr td")
@@ -228,23 +253,11 @@ def extract_media_best_download_link(html):
 
         return links[len(links) - 1]
 
-    soup = BeautifulSoup(html, 'lxml')
 
-    func_attempts = [extract_table, extract_iframe, extract_video, extract_video_regex]
-
-    for func_attempt in func_attempts:
-        try:
-            return func_attempt(html, soup)
-        except ParserError:
-            continue
-
-    # Debug statement to identify parser errors
-    print("----------- DEBUG -----------")
-    print(html)
-
-    raise ParserError("media_download_link: all attempts to extract url failed")
+    return try_parser_functions(html, [extract_json, extract_html_table])
 
 
+@log_html_on_exception()
 def extract_filename_from_headers(headers):
     if "Content-Disposition" not in headers:
         raise ParserError(
