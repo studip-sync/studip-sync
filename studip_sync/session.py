@@ -163,6 +163,7 @@ class Session(object):
         
         with self.session.get(download_url, stream=True) as response:
             if not response.ok:
+                print(response.text)
                 raise DownloadError("Cannot download file")
 
             with open(tempfile, "wb") as file:
