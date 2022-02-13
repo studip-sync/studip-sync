@@ -195,12 +195,7 @@ class Session(object):
 
         with self.session.get(url) as response:
             if not response.ok:
-                #if response.status_code == 403 and "Documents" in response.text:
-                #    raise MissingFeatureError("This course has no files")
-                #elif response.status_code == 403 and "Zugriff verweigert" in response.text:
-                #    raise MissingPermissionFolderError(
-                #        "You are missing the required pemissions to view this folder")
-                #else:
+                print(response.text)
                 raise DownloadError("Cannot access course files/files_index page")
 
             res = json.loads(response.text)
