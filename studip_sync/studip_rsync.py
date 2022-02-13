@@ -130,7 +130,7 @@ def check_and_cleanup_form_data(form_data_files, form_data_folders, use_api):
                 log("Found unsupported file: {}".format(form_data["name"]))
                 continue
 
-            if self.use_api and "is_downloadable" in form_data and not form_data["is_downloadable"]:
+            if use_api and "is_downloadable" in form_data and not form_data["is_downloadable"]:
                 log("Skipped file that can't be downloaded: {}".format(form_data["name"]))
                 continue
 
