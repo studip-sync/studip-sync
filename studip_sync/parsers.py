@@ -95,8 +95,6 @@ def extract_files_index_data(html):
 
     form = soup.find('form', id="files_table_form")
 
-    raise ParserError("test")
-
     if "data-files" not in form.attrs:
         raise ParserError("index_data: Missing data-files attribute in form")
 
