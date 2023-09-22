@@ -15,8 +15,8 @@ parts:
   studip-sync:
     plugin: python
     source: .
-    build-packages: [python3-dev]
-    stage-packages: [rsync]
+    build-packages: [zlib1g-dev, libxml2-dev, libxslt-dev, python3-dev]
+    stage-packages: [rsync, libxml2, libxslt1.1]
 
 apps:
   studip-sync:
