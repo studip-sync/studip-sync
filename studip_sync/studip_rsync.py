@@ -119,7 +119,12 @@ def check_and_cleanup_form_data(form_data_files, form_data_folders, use_api):
     form_data_files_new = []
     for form_data in form_data_files:
         try:
+            if "id" not in form_data:
+                log("Skipped file that can't be downloaded: {}".format(form_data["name"]))
+                continue
+                
             form_id = form_data["id"]
+            
             if not all(c in string.hexdigits for c in form_id):
                 raise ParserError("id is not hexadecimal")
 
@@ -152,6 +157,9 @@ def check_and_cleanup_form_data(form_data_files, form_data_folders, use_api):
     form_data_folders_new = []
     for form_data in form_data_folders:
         try:
+            if "id" not in form_data:
+                log("Skipped folder that can't be downloaded")
+                continue
             form_id = form_data["id"]
             if not all(c in string.hexdigits for c in form_id):
                 raise ValueError("id is not hexadecimal")

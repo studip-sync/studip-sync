@@ -133,36 +133,36 @@ def extract_csrf_token(html):
 def extract_courses(html, only_recent_semester):
     soup = BeautifulSoup(html, 'lxml')
 
-    div = soup.find("div", id="my_seminars")
-    tables = div.find_all("table")
-
-    for i in range(0, len(tables)):
-        if only_recent_semester and i > 0:
+    p = re.compile("MyCoursesData = (.*);")
+    courses = None
+    for script in soup.find_all("script"):
+        try: 
+            courses = json.loads(script.string.split("MyCoursesData = ")[1].split(";")[0])
+        except Exception:
             continue
 
-        j = len(tables) - i
+    if courses is None:
+        raise ParserError("Could not find courses")
 
-        table = tables[i]
+    for i, group in enumerate(courses["groups"]):
+        semester_name = group["name"].strip()
+        semester_id = len(courses["groups"]) - i
 
-        semester = table.find("caption").string.strip()
-
-        matcher = re.compile(
-            r"https://.*seminar_main.php\?auswahl=[0-9a-f]*$")
-        links = table.find_all("a", href=matcher)
-
-        for link in links:
-            href = link.attrs.get("href", "")
-            query = urllib.parse.urlsplit(href).query
-            course_id = urllib.parse.parse_qs(query).get("auswahl", [""])[0]
-
-            save_as = re.sub(r"\s\s+", " ", link.get_text(strip=True))
+        if only_recent_semester and semester_id != len(courses["groups"]):
+            continue
+    
+        course_ids = group["data"][0]["ids"]
+        for course_id  in course_ids:
+            course = courses["courses"][course_id]
+            save_as = course["name"].strip()
+            save_as = re.sub(r"\s\s+", " ", save_as)
             save_as = save_as.replace("/", "--")
 
             yield {
                 "course_id": course_id,
                 "save_as": save_as,
-                "semester": semester,
-                "semester_id": j
+                "semester": semester_name,
+                "semester_id": semester_id
             }
 
 
