@@ -30,5 +30,5 @@ if ARGS.old:
 else:
     from studip_sync.studip_rsync import StudIPRSync
     with StudIPRSync() as s:
-        exit(s.sync(ARGS.full, ARGS.recent, not ARGS.disable_api_usage))
+        exit(s.sync(ARGS.full, ARGS.recent, not ARGS.disable_api))
 
