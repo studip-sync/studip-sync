@@ -28,8 +28,8 @@ def parse_args():
     parser.add_argument("--old", action="store_true",
                         help="use older sync client which downloads files in bulk")
 
-    parser.add_argument("--use-api", action="store_true",
-                        help="use new api endpoint to download and discover files")
+    parser.add_argument("--disable-api-usage", action="store_true",
+                        help="don't use the StudIP API endpoint to download and discover files")
 
     # PLUGINS
     parser.add_argument("--enable-plugin", metavar="PLUGIN",

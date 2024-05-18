@@ -28,7 +28,7 @@ class StudIPRSync(object):
         if self.media_destination_dir:
             os.makedirs(self.media_destination_dir, exist_ok=True)
 
-    def sync(self, sync_fully=False, sync_recent=False, use_api=False):
+    def sync(self, sync_fully=False, sync_recent=False, use_api=True):
         PLUGINS.hook("hook_start")
 
         with Session(base_url=CONFIG.base_url, plugins=PLUGINS) as session:
