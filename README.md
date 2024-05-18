@@ -4,13 +4,20 @@
 
 Download and synchronize files and media from Stud.IP -- the campus management platform deployed at several German universities.
 
-Note that this project supports currently only the *University of Göttingen* and the *University of Passau* but 
+Note that this project currently only supports the *University of Göttingen* and the *University of Passau* but 
 could work at other universities with similar authentication methods. Also, StudIP version 4.6 is the only fully supported
 version (but most features will still work with StudIP 4.5).
 
 ## Installation
 
-### Installation from source
+### Using pipx (recommended)
+Make sure you have [pipx](https://pipx.pypa.io) installed.
+Then run
+```shell
+pipx install git+https://github.com/studip-sync/studip-sync.git
+```
+
+### From source
 
 1. `git clone https://github.com/studip-sync/studip-sync`
 2. Install all needed dependencies
@@ -21,7 +28,7 @@ To create a permanent configuration:
 1. Run `./studip_sync.py --init` (see Configuration)
 2. Schedule a cron job or manually run `./studip_sync.py` to sync your data.
 
-### Installation as snap
+### As a snap package
 
 1. If not yet installed, [install snapd](https://docs.snapcraft.io/core/install)
 2. `sudo snap install --beta studip-sync`
@@ -33,7 +40,7 @@ config file. If you ignore this note, the files will be synced to `snap/studip-s
 **Limitation**: The snap can only write to non-hidden directories in you home directory. If you omit Step 3, it cannot
 write to your home directory at all.
 
-### Installation on Arch Linux
+### On Arch Linux (AUR)
 Install [studip-sync-git](https://aur.archlinux.org/packages/studip-sync-git/) from the AUR.
 
 ## Configuration
