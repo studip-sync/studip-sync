@@ -129,7 +129,7 @@ def check_and_cleanup_form_data(form_data_files, form_data_folders, use_api):
                 raise ParserError("id is not hexadecimal")
 
             # TODO: support links by saving them as .url files
-            if "size" not in form_data or form_data["size"] is None or form_data["storage"] == "url" or ("icon" in form_data and form_data["icon"] == "link-extern"):
+            if "size" not in form_data or form_data["size"] is None or ("storage" in form_data and form_data["storage"] == "url") or ("icon" in form_data and form_data["icon"] == "link-extern"):
                 if ARGS.v:
                     print("[Debug] " + str(form_data))
                 log("Found unsupported file: {}".format(form_data["name"]))
