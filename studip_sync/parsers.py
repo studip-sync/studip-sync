@@ -1,7 +1,6 @@
-import cgi
 import json
 import re
-import urllib.parse
+from email.message import EmailMessage
 
 from functools import wraps
 from bs4 import BeautifulSoup
@@ -260,9 +259,9 @@ def extract_filename_from_headers(headers):
         raise ParserError(
             "media_filename_headers: \"Content-Disposition\" is missing")
 
-    content_disposition = headers["Content-Disposition"]
-
-    header_value, header_params = cgi.parse_header(content_disposition)
+    msg = EmailMessage()
+    msg['Content-Disposition'] = headers["Content-Disposition"]
+    header_params = msg["Content-Disposition"].params
 
     if "filename" not in header_params:
         raise ParserError("media_filename_headers: \"filename\" is missing")
