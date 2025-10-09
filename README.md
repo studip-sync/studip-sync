@@ -4,7 +4,7 @@
 
 Download and synchronize files and media from Stud.IP -- the campus management platform deployed at several German universities.
 
-Note that this project currently only supports the *University of Göttingen* and the *University of Passau* but 
+Note that this project currently only supports the *University of Göttingen*, the *University of Passau* and *Trier University of Applied Sciences* but 
 could work at other universities with similar authentication methods.
 
 ## Installation

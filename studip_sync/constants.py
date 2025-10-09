@@ -9,12 +9,16 @@ LOGIN_PRESETS = [
                 auth_type="general", auth_data={}),
     LoginPreset(name="University of Passau", base_url="https://studip.uni-passau.de/studip/",
                 auth_type="shibboleth", auth_data={
-                    "login_url": "https://studip.uni-passau.de/studip/index.php?again=yes&sso=shib",
-                    "sso_post_url": "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
-                })
+            "login_url": "https://studip.uni-passau.de/studip/index.php?again=yes&sso=shib",
+            "sso_post_url": "https://studip.uni-passau.de/Shibboleth.sso/SAML2/POST"
+        }),
+    LoginPreset(name="Trier University of Applied Sciences", base_url="https://studip.hochschule-trier.de",
+                auth_type="shibboleth", auth_data={
+            "login_url": "https://studip.hochschule-trier.de/index.php?again=yes&sso=shibldap",
+            "sso_post_url": "https://studip.hochschule-trier.de/Shibboleth.sso/SAML2/POST"
+        })
 ]
 AUTHENTICATION_TYPES = {"general": GeneralLogin,
                         "shibboleth": ShibbolethLogin}
 AUTHENTICATION_TYPE_DEFAULT = "general"
 AUTHENTICATION_TYPE_DATA_DEFAULT = {}
-
