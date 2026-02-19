@@ -95,6 +95,17 @@ To sync only the last semester and skip older courses, use the `--recent` flag. 
 ./studip_sync.py
 ```
 
+### Network tuning
+If your Stud.IP instance is slow or unstable, you can tune request behavior:
+```shell
+./studip_sync.py --http-timeout 60 --http-retries 5 --http-retry-backoff 1.0
+```
+
+The same values can also be placed in `config.json`:
+- `http_timeout`
+- `http_retries`
+- `http_retry_backoff_factor`
+
 ### Automation using a cron job
 Run `crontab -e` and add the following lines:
 ```
@@ -123,4 +134,3 @@ Finally, enter the task list id of your specified task list. For this you need t
 ## History
 * **2020 - today**: [@lenke182](https://github.com/lenke182) has taken over development and maintenance of the project.
 * **2015 - 2019**: Developed and maintained by [@woefe](https://github.com/woefe). During that time studip-sync was compatible with Stud.IP deployed at University of Passau.
-

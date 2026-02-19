@@ -7,7 +7,8 @@ from studip_sync import get_config_file
 from studip_sync.arg_parser import ARGS
 from studip_sync.config_creator import ConfigCreator
 from studip_sync.constants import URL_BASEURL_DEFAULT, AUTHENTICATION_TYPE_DEFAULT, \
-    AUTHENTICATION_TYPE_DATA_DEFAULT, AUTHENTICATION_TYPES
+    AUTHENTICATION_TYPE_DATA_DEFAULT, AUTHENTICATION_TYPES, HTTP_REQUEST_TIMEOUT, \
+    HTTP_RETRY_TOTAL, HTTP_RETRY_BACKOFF_FACTOR
 from studip_sync.helpers import JSONConfig, ConfigError
 
 
@@ -39,6 +40,15 @@ class Config(JSONConfig):
 
         if self.auth_type not in AUTHENTICATION_TYPES:
             raise ConfigError("Invalid auth type!")
+
+        if self.http_request_timeout <= 0:
+            raise ConfigError("http_timeout must be > 0")
+
+        if self.http_retry_total < 0:
+            raise ConfigError("http_retries must be >= 0")
+
+        if self.http_retry_backoff_factor < 0:
+            raise ConfigError("http_retry_backoff_factor must be >= 0")
 
     @property
     def last_sync(self):
@@ -84,6 +94,13 @@ class Config(JSONConfig):
             return None
 
         return user.get(prop)
+
+    @staticmethod
+    def _cast_numeric(value, cast_type, key_name):
+        try:
+            return cast_type(value)
+        except (TypeError, ValueError) as e:
+            raise ConfigError("{} has an invalid value".format(key_name)) from e
 
     @property
     def username(self):
@@ -166,6 +183,39 @@ class Config(JSONConfig):
             return False
 
         return self.config.get("use_new_file_structure", False)
+
+    @property
+    def http_request_timeout(self):
+        if self.args.http_timeout is not None:
+            value = self.args.http_timeout
+        elif not self.config:
+            value = HTTP_REQUEST_TIMEOUT
+        else:
+            value = self.config.get("http_timeout", HTTP_REQUEST_TIMEOUT)
+
+        return self._cast_numeric(value, float, "http_timeout")
+
+    @property
+    def http_retry_total(self):
+        if self.args.http_retries is not None:
+            value = self.args.http_retries
+        elif not self.config:
+            value = HTTP_RETRY_TOTAL
+        else:
+            value = self.config.get("http_retries", HTTP_RETRY_TOTAL)
+
+        return self._cast_numeric(value, int, "http_retries")
+
+    @property
+    def http_retry_backoff_factor(self):
+        if self.args.http_retry_backoff is not None:
+            value = self.args.http_retry_backoff
+        elif not self.config:
+            value = HTTP_RETRY_BACKOFF_FACTOR
+        else:
+            value = self.config.get("http_retry_backoff_factor", HTTP_RETRY_BACKOFF_FACTOR)
+
+        return self._cast_numeric(value, float, "http_retry_backoff_factor")
 
 
 try:

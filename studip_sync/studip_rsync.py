@@ -33,7 +33,12 @@ class StudIPRSync(object):
     def sync(self, sync_fully=False, sync_recent=False, use_api=True):
         PLUGINS.hook("hook_start")
 
-        with Session(base_url=CONFIG.base_url, plugins=PLUGINS) as session:
+        with Session(
+                base_url=CONFIG.base_url,
+                plugins=PLUGINS,
+                request_timeout=CONFIG.http_request_timeout,
+                retry_total=CONFIG.http_retry_total,
+                retry_backoff_factor=CONFIG.http_retry_backoff_factor) as session:
             print("Logging in...")
             try:
                 session.login(CONFIG.auth_type, CONFIG.auth_type_data, CONFIG.username,

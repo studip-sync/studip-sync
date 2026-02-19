@@ -31,6 +31,15 @@ def parse_args():
     parser.add_argument("--disable-api", action="store_true",
                         help="don't use the StudIP API endpoint to download and discover files")
 
+    parser.add_argument("--http-timeout", metavar="SECONDS", type=float, default=None,
+                        help="HTTP request timeout in seconds (default from config/constants)")
+
+    parser.add_argument("--http-retries", metavar="COUNT", type=int, default=None,
+                        help="number of HTTP retries for transient failures")
+
+    parser.add_argument("--http-retry-backoff", metavar="SECONDS", type=float, default=None,
+                        help="backoff factor used between HTTP retries")
+
     # PLUGINS
     parser.add_argument("--enable-plugin", metavar="PLUGIN",
                         help="enables and configures a plugin")
