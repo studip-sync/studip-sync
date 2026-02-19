@@ -24,7 +24,8 @@ class ShibbolethLogin(LoginBase):
 
     @staticmethod
     def login(session, username, password, auth_type_data):
-        with session.session.get(auth_type_data["login_url"]) as response:
+        with session.get(auth_type_data["login_url"], error_class=LoginError,
+                         action="Get Shibboleth login page") as response:
             if not response.ok:
                 raise LoginError("Cannot access Stud.IP login page")
             sso_url_relative = ShibbolethLogin.extract_sso_url(response.text)
@@ -43,7 +44,8 @@ class ShibbolethLogin(LoginBase):
             print("[Debug] sso_url_relative=" + sso_url_relative)
             print("[Debug] sso_url=" + sso_url)
 
-        with session.session.post(sso_url, data=login_data) as response:
+        with session.post(sso_url, error_class=LoginError, action="Post SSO credentials",
+                          data=login_data) as response:
             if ARGS.v:
                 print("[Debug] " + response.text)
             if not response.ok:
@@ -53,7 +55,8 @@ class ShibbolethLogin(LoginBase):
 
             saml_data = ShibbolethLogin.extract_saml_data(response.text)
 
-        with session.session.post(auth_type_data["sso_post_url"], data=saml_data) as response:
+        with session.post(auth_type_data["sso_post_url"], error_class=LoginError,
+                          action="Post SAML response", data=saml_data) as response:
             if not response.ok:
                 raise LoginError("Cannot access Stud.IP main page")
 

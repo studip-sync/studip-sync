@@ -8,9 +8,11 @@ import time
 from datetime import datetime
 
 from studip_sync.config import CONFIG
+from studip_sync.course_list_store import save_course_list
+from studip_sync.course_paths import get_course_save_as
 from studip_sync.logins import LoginError
 from studip_sync.plugins.plugins import PLUGINS
-from studip_sync.session import Session, DownloadError, MissingFeatureError
+from studip_sync.session import Session, DownloadError, MissingFeatureError, SessionError
 from studip_sync.parsers import ParserError
 
 
@@ -55,10 +57,16 @@ class StudipSync(object):
 
             try:
                 courses = list(session.get_courses(sync_recent))
-            except (LoginError, ParserError) as e:
+            except (LoginError, ParserError, SessionError) as e:
                 print("Downloading course list failed!")
                 print(e)
                 return 1
+
+            try:
+                path = save_course_list(courses, CONFIG.config_dir)
+                print("Saved course list to: " + path)
+            except OSError as e:
+                print("Warning: failed to save course list: " + str(e))
 
             if sync_recent:
                 print("Syncing only the most recent semester!")
@@ -66,7 +74,8 @@ class StudipSync(object):
             status_code = 0
             for i in range(0, len(courses)):
                 course = courses[i]
-                print("{}) {}: {}".format(i+1, course["semester"], course["save_as"]))
+                course_save_as = get_course_save_as(course)
+                print("{}) {}".format(i+1, course_save_as))
 
                 if self.files_destination_dir:
                     try:
@@ -74,7 +83,7 @@ class StudipSync(object):
                             print("\tDownloading files...")
                             zip_location = session.download(
                                 course["course_id"], self.download_dir, course.get("sync_only"))
-                            extractor.extract(zip_location, course["save_as"])
+                            extractor.extract(zip_location, course_save_as)
                         else:
                             print("\tSkipping this course...")
                     except MissingFeatureError:
@@ -91,9 +100,11 @@ class StudipSync(object):
                     try:
                         print("\tSyncing media files...")
 
-                        media_course_dir = os.path.join(self.media_destination_dir, course["save_as"])
+                        media_course_dir = os.path.join(self.media_destination_dir,
+                                                        course_save_as)
 
-                        session.download_media(course["course_id"], media_course_dir, course["save_as"])
+                        session.download_media(course["course_id"], media_course_dir,
+                                               course_save_as)
                     except MissingFeatureError:
                         # Ignore if there is no media
                         pass
@@ -103,7 +114,7 @@ class StudipSync(object):
                     except ParserError as e:
                         print("\tDownload of media failed: " + str(e))
                         if status_code != 0:
-                            raise e
+                            raise
                         else:
                             status_code = 2
 

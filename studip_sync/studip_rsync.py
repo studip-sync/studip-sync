@@ -8,10 +8,12 @@ import string
 
 from studip_sync.arg_parser import ARGS
 from studip_sync.config import CONFIG
+from studip_sync.course_list_store import save_course_list
+from studip_sync.course_paths import get_course_save_as
 from studip_sync.logins import LoginError
 from studip_sync.plugins.plugins import PLUGINS
 from studip_sync.session import Session, DownloadError, MissingFeatureError, \
-    MissingPermissionFolderError
+    MissingPermissionFolderError, SessionError
 from studip_sync.parsers import ParserError
 
 
@@ -45,10 +47,16 @@ class StudIPRSync(object):
 
             try:
                 courses = list(session.get_courses(sync_recent))
-            except (LoginError, ParserError) as e:
+            except (LoginError, ParserError, SessionError) as e:
                 print("Downloading course list failed!")
                 print(e)
                 return 1
+
+            try:
+                path = save_course_list(courses, CONFIG.config_dir)
+                print("Saved course list to: " + path)
+            except OSError as e:
+                print("Warning: failed to save course list: " + str(e))
 
             if sync_recent:
                 print("Syncing only the most recent semester!")
@@ -56,9 +64,8 @@ class StudIPRSync(object):
             status_code = 0
             for i in range(0, len(courses)):
                 course = courses[i]
-                print("{}) {}: {}".format(i + 1, course["semester"], course["save_as"]))
-
                 course_save_as = get_course_save_as(course)
+                print("{}) {}".format(i + 1, course_save_as))
 
                 if self.files_destination_dir:
                     try:
@@ -72,7 +79,7 @@ class StudIPRSync(object):
                     except DownloadError as e:
                         print("\tDownload of files failed: " + str(e))
                         status_code = 2
-                        raise e
+                        raise
 
                 if self.media_destination_dir:
                     try:
@@ -82,18 +89,18 @@ class StudIPRSync(object):
                                                       course_save_as)
 
                         session.download_media(course["course_id"], media_root_dir,
-                                               course["save_as"])
+                                               course_save_as)
                     except MissingFeatureError:
                         # Ignore if there is no media
                         pass
                     except DownloadError as e:
                         print("\tDownload of media failed: " + str(e))
                         status_code = 2
-                        raise e
+                        raise
                     except ParserError as e:
                         print("\tDownload of media failed: " + str(e))
                         if status_code != 0:
-                            raise e
+                            raise
                         else:
                             status_code = 2
 
@@ -209,23 +216,13 @@ def is_file_new(file, file_path):
     return False
 
 
-def get_course_save_as(course):
-    if CONFIG.use_new_file_structure:
-        save_as_semester = course["semester"].replace("/", "--")
-        save_as_semester = "{} - {}".format(course["semester_id"], save_as_semester)
-
-        return os.path.join(save_as_semester, course["save_as"])
-    else:
-        return course["save_as"]
-
-
 class CourseRSync:
 
     def __init__(self, session, workdir, root_folder, course, sync_fully, use_api):
         self.session = session
         self.workdir = workdir
         self.course_id = course["course_id"]
-        self.course_save_as = course["save_as"]
+        self.course_save_as = get_course_save_as(course)
         self.root_folder = root_folder
         self.sync_fully = sync_fully
         self.use_api = use_api

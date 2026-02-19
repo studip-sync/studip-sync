@@ -5,9 +5,13 @@ import urllib.parse
 import json
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from studip_sync import parsers
-from studip_sync.constants import URL_BASEURL_DEFAULT, AUTHENTICATION_TYPES
+from studip_sync.constants import URL_BASEURL_DEFAULT, AUTHENTICATION_TYPES, \
+    HTTP_REQUEST_TIMEOUT, HTTP_RETRY_TOTAL, HTTP_RETRY_BACKOFF_FACTOR, \
+    HTTP_RETRY_STATUS_FORCELIST
 from studip_sync.parsers import ParserError
 from studip_sync.plugins.plugin_list import PluginList
 
@@ -80,6 +84,7 @@ class Session(object):
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "WeWantFileSync"})
         self.url = URL(base_url)
+        self._configure_http()
 
         if plugins is None:
             self.plugins = PluginList()
@@ -92,6 +97,35 @@ class Session(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self.session.__exit__()
 
+    def _configure_http(self):
+        retries = Retry(
+            total=HTTP_RETRY_TOTAL,
+            connect=HTTP_RETRY_TOTAL,
+            read=HTTP_RETRY_TOTAL,
+            status=HTTP_RETRY_TOTAL,
+            backoff_factor=HTTP_RETRY_BACKOFF_FACTOR,
+            status_forcelist=HTTP_RETRY_STATUS_FORCELIST,
+            allowed_methods=frozenset(["GET", "POST"])
+        )
+
+        adapter = HTTPAdapter(max_retries=retries)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
+
+    def request(self, method, url, error_class=SessionError, action="request", **kwargs):
+        kwargs.setdefault("timeout", HTTP_REQUEST_TIMEOUT)
+
+        try:
+            return self.session.request(method, url, **kwargs)
+        except requests.RequestException as e:
+            raise error_class("{} failed: {}".format(action, e)) from e
+
+    def get(self, url, error_class=SessionError, action="request", **kwargs):
+        return self.request("GET", url, error_class=error_class, action=action, **kwargs)
+
+    def post(self, url, error_class=SessionError, action="request", **kwargs):
+        return self.request("POST", url, error_class=error_class, action=action, **kwargs)
+
     def set_base_url(self, new_base_url):
         self.url = URL(new_base_url)
 
@@ -99,17 +133,57 @@ class Session(object):
         auth = AUTHENTICATION_TYPES[auth_type]
         auth.login(self, username, password, auth_type_data)
 
+    @staticmethod
+    def _normalize_url(url):
+        parsed = urllib.parse.urlsplit(url)
+        return urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, parsed.query, ""))
+
+    @staticmethod
+    def _add_unique_courses(courses, known_courses, new_courses):
+        for course in new_courses:
+            key = (course["course_id"], course["semester"])
+            if key in known_courses:
+                continue
+
+            known_courses.add(key)
+            courses.append(course)
+
     def get_courses(self, only_recent_semester=False):
-        with self.session.get(self.url.courses()) as response:
+        with self.get(self.url.courses(), action="Get courses") as response:
             if not response.ok:
                 raise SessionError("Failed to get courses")
+            html = response.text
+            response_url = response.url
 
-            return parsers.extract_courses(response.text, only_recent_semester)
+        courses = list(parsers.extract_courses(html, only_recent_semester))
+        if only_recent_semester:
+            return courses
+
+        known_courses = {(course["course_id"], course["semester"]) for course in courses}
+        known_urls = {self._normalize_url(response_url), self._normalize_url(self.url.courses())}
+
+        semester_urls = parsers.extract_my_courses_semester_urls(html)
+        for semester_url in semester_urls:
+            absolute_url = urllib.parse.urljoin(response_url, semester_url)
+            normalized_url = self._normalize_url(absolute_url)
+            if normalized_url in known_urls:
+                continue
+            known_urls.add(normalized_url)
+
+            with self.get(absolute_url, action="Get courses for semester") as response:
+                if not response.ok:
+                    raise SessionError("Failed to get courses for all semesters")
+
+                parsed_courses = parsers.extract_courses(response.text, False)
+                self._add_unique_courses(courses, known_courses, parsed_courses)
+
+        return courses
 
     def check_course_new_files(self, course_id, last_sync):
         params = {"cid": course_id}
 
-        with self.session.get(self.url.files_flat(), params=params) as response:
+        with self.get(self.url.files_flat(), error_class=DownloadError, action="Get files flat",
+                      params=params) as response:
             if not response.ok:
                 if response.status_code == 403 and "Documents" in response.text:
                     raise MissingFeatureError("This course has no files")
@@ -127,7 +201,8 @@ class Session(object):
     def download(self, course_id, workdir, sync_only=None):
         params = {"cid": course_id}
 
-        with self.session.get(self.url.files_main(), params=params) as response:
+        with self.get(self.url.files_main(), error_class=DownloadError, action="Get files main",
+                      params=params) as response:
             if not response.ok:
                 raise DownloadError("Cannot access course files page")
             folder_id = parsers.extract_parent_folder_id(response.text)
@@ -141,7 +216,8 @@ class Session(object):
             "download": 1
         }
 
-        with self.session.post(download_url, params=params, data=data, stream=True) as response:
+        with self.post(download_url, error_class=DownloadError, action="Bulk file download",
+                       params=params, data=data, stream=True) as response:
             if not response.ok:
                 raise DownloadError("Cannot download course files")
             path = os.path.join(workdir, course_id)
@@ -150,7 +226,8 @@ class Session(object):
                 return path
 
     def download_file(self, download_url, tempfile):
-        with self.session.post(download_url, stream=True) as response:
+        with self.post(download_url, error_class=DownloadError, action="Download file",
+                       stream=True) as response:
             if not response.ok:
                 raise DownloadError("Cannot download file")
 
@@ -160,8 +237,9 @@ class Session(object):
 
     def download_file_api(self, file_id, tempfile):
         download_url = self.url.files_api_download(file_id)
-        
-        with self.session.get(download_url, stream=True) as response:
+
+        with self.get(download_url, error_class=DownloadError, action="Download file via API",
+                      stream=True) as response:
             if not response.ok:
                 print(response.text)
                 raise DownloadError("Cannot download file")
@@ -177,7 +255,8 @@ class Session(object):
         else:
             url = self.url.files_main()
 
-        with self.session.get(url, params=params) as response:
+        with self.get(url, error_class=DownloadError, action="Get files index",
+                      params=params) as response:
             if not response.ok:
                 if response.status_code == 403 and "Documents" in response.text:
                     raise MissingFeatureError("This course has no files")
@@ -194,7 +273,7 @@ class Session(object):
         else:
             url = self.url.files_api_top_folder(course_id)
 
-        with self.session.get(url) as response:
+        with self.get(url, error_class=DownloadError, action="Get files index from API") as response:
             if not response.ok:
                 print(response.text)
                 raise DownloadError("Cannot access course files/files_index page")
@@ -208,7 +287,8 @@ class Session(object):
 
         mediacast_list_url = self.url.mediacast_list()
 
-        with self.session.get(mediacast_list_url, params=params) as response:
+        with self.get(mediacast_list_url, error_class=DownloadError, action="Get mediacast list",
+                      params=params) as response:
             if not response.ok:
                 if response.status_code == 500 and "not found" in response.text:
                     raise MissingFeatureError("This course has no media")
@@ -250,7 +330,8 @@ class Session(object):
             print("\t\tDownloading " + media_hash)
 
             if media_type == "player":
-                with self.session.get(media_player_url) as response:
+                with self.get(media_player_url, error_class=DownloadError,
+                              action="Get media player page") as response:
                     if not response.ok:
                         raise DownloadError("Cannot access media file page: " + media_hash)
 
@@ -264,7 +345,8 @@ class Session(object):
             else:
                 raise ParserError("media_type is not a valid type")
 
-            with self.session.get(download_media_url, stream=True) as response:
+            with self.get(download_media_url, error_class=DownloadError,
+                          action="Download media file", stream=True) as response:
                 if not response.ok:
                     print("\t\tCannot download media file: " + str(response))
                     continue
@@ -288,7 +370,7 @@ class Session(object):
                         shutil.copyfileobj(response.raw, download_file)
                 except OSError as e:
                     os.remove(filepath)
-                    raise e
+                    raise
 
                 self.plugins.hook("hook_file_download_successful", media_filename, course_save_as,
                                   filepath)

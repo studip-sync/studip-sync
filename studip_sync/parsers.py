@@ -13,8 +13,8 @@ def log_html_on_exception():
                 return func(html, *args, **kwargs)
             except Exception as e:
                 print(html)
-                
-                raise e
+
+                raise
 
         return inner
 
@@ -35,6 +35,87 @@ def try_parser_functions(html, func_attempts):
 
 class ParserError(Exception):
     pass
+
+
+COURSES_DATA_REGEX = re.compile(r"MyCoursesData\s*=\s*(\{.+?\})\s*;", re.DOTALL)
+COURSES_URL_REGEX = re.compile(r"""["']([^"']*dispatch\.php/my_courses[^"']*)["']""")
+SEMESTER_NAME_REGEX = re.compile(
+    r"(?:WiSe|SoSe|Wintersemester|Sommersemester|WS|SS|\b20\d{2}\b)",
+    re.IGNORECASE
+)
+
+
+def _normalize_course_name(name):
+    save_as = (name or "").strip()
+    save_as = re.sub(r"\s\s+", " ", save_as)
+    save_as = save_as.replace("/", "--")
+    return save_as
+
+
+def _normalize_semester_name(name):
+    semester = (name or "").strip()
+    semester = re.sub(r"\s\s+", " ", semester)
+    semester = semester.replace("/", "--")
+    return semester
+
+
+def _looks_like_semester(name):
+    if not name:
+        return False
+    return SEMESTER_NAME_REGEX.search(name) is not None
+
+
+def _extract_courses_data(html):
+    matcher = COURSES_DATA_REGEX.search(html)
+    if matcher is None:
+        raise ParserError("Could not find courses")
+
+    try:
+        return json.loads(matcher.group(1))
+    except json.JSONDecodeError as e:
+        raise ParserError("Could not parse courses JSON") from e
+
+
+def _extract_semester_groups(courses):
+    semester_groups = []
+
+    for group in courses.get("groups", []):
+        group_name = _normalize_semester_name(group.get("name"))
+        group_data = group.get("data") or []
+
+        if not isinstance(group_data, list):
+            continue
+
+        for item in group_data:
+            if not isinstance(item, dict):
+                continue
+
+            course_ids = item.get("ids")
+            if not isinstance(course_ids, list) or not course_ids:
+                continue
+
+            data_name = _normalize_semester_name(item.get("name"))
+
+            if _looks_like_semester(data_name):
+                semester_name = data_name
+            elif _looks_like_semester(group_name):
+                semester_name = group_name
+            elif data_name:
+                semester_name = data_name
+            elif group_name:
+                semester_name = group_name
+            else:
+                semester_name = "Unknown Semester"
+
+            semester_groups.append({
+                "semester": semester_name,
+                "ids": course_ids
+            })
+
+    if not semester_groups:
+        raise ParserError("Could not find semesters in course data")
+
+    return semester_groups
 
 
 @log_html_on_exception()
@@ -130,39 +211,73 @@ def extract_csrf_token(html):
 
 @log_html_on_exception()
 def extract_courses(html, only_recent_semester):
-    soup = BeautifulSoup(html, 'lxml')
+    courses = _extract_courses_data(html)
+    semester_groups = _extract_semester_groups(courses)
+    course_data = courses.get("courses", {})
 
-    p = re.compile("MyCoursesData = (.*);")
-    courses = None
-    for script in soup.find_all("script"):
-        try: 
-            courses = json.loads(script.string.split("MyCoursesData = ")[1].split(";")[0])
-        except Exception:
+    semester_order = []
+    semester_seen = set()
+    seen_courses = set()
+    parsed_courses = []
+
+    for group in semester_groups:
+        semester_name = group["semester"]
+
+        if semester_name not in semester_seen:
+            semester_seen.add(semester_name)
+            semester_order.append(semester_name)
+
+        for course_id in group["ids"]:
+            course_id_str = str(course_id)
+            course = course_data.get(course_id_str)
+            if course is None:
+                course = course_data.get(course_id)
+            if course is None:
+                continue
+
+            dedupe_key = (course_id_str, semester_name)
+            if dedupe_key in seen_courses:
+                continue
+            seen_courses.add(dedupe_key)
+
+            parsed_courses.append({
+                "course_id": course_id_str,
+                "save_as": _normalize_course_name(course.get("name", "")),
+                "semester": semester_name
+            })
+
+    if only_recent_semester and semester_order:
+        recent_semester = next((s for s in semester_order if _looks_like_semester(s)),
+                               semester_order[0])
+        parsed_courses = [course for course in parsed_courses
+                          if course["semester"] == recent_semester]
+
+    semester_ids = {
+        semester_name: len(semester_order) - i for i, semester_name in enumerate(semester_order)
+    }
+
+    for course in parsed_courses:
+        course["semester_id"] = semester_ids.get(course["semester"], 0)
+        yield course
+
+
+@log_html_on_exception()
+def extract_my_courses_semester_urls(html):
+    urls = []
+    seen = set()
+
+    for match in COURSES_URL_REGEX.findall(html):
+        url = match.replace("\\/", "/")
+        if "dispatch.php/my_courses" not in url:
             continue
-
-    if courses is None:
-        raise ParserError("Could not find courses")
-
-    for i, group in enumerate(courses["groups"]):
-        semester_name = group["name"].strip()
-        semester_id = len(courses["groups"]) - i
-
-        if only_recent_semester and semester_id != len(courses["groups"]):
+        if "set_semester" not in url and "sem_select" not in url and "semester=" not in url:
             continue
-    
-        course_ids = group["data"][0]["ids"]
-        for course_id  in course_ids:
-            course = courses["courses"][course_id]
-            save_as = course["name"].strip()
-            save_as = re.sub(r"\s\s+", " ", save_as)
-            save_as = save_as.replace("/", "--")
+        if url in seen:
+            continue
+        seen.add(url)
+        urls.append(url)
 
-            yield {
-                "course_id": course_id,
-                "save_as": save_as,
-                "semester": semester_name,
-                "semester_id": semester_id
-            }
+    return urls
 
 
 @log_html_on_exception()
