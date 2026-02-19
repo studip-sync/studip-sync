@@ -148,6 +148,24 @@ class Session(object):
                 os.remove(temp_path)
             raise
 
+    @staticmethod
+    def _media_hash_candidates_from_filename(filename):
+        parts = filename.split("-")
+        if len(parts) < 2:
+            return set()
+
+        last_part = parts[-1]
+        last_without_ext = last_part.rsplit(".", 1)[0]
+
+        return {parts[0], last_without_ext}
+
+    @classmethod
+    def _existing_media_hashes(cls, filenames):
+        known_hashes = set()
+        for filename in filenames:
+            known_hashes.update(cls._media_hash_candidates_from_filename(filename))
+        return known_hashes
+
     def request(self, method, url, error_class=SessionError, action="request", **kwargs):
         kwargs.setdefault("timeout", self.request_timeout)
 
@@ -315,7 +333,7 @@ class Session(object):
             
             return res["file_refs"], res["subfolders"]
 
-    def download_media(self, course_id, media_workdir, course_save_as):
+    def download_media(self, course_id, media_workdir, course_save_as, dry_run=False):
         params = {"cid": course_id}
 
         mediacast_list_url = self.url.mediacast_list()
@@ -330,12 +348,20 @@ class Session(object):
 
             media_files = parsers.extract_media_list(response.text)
 
-        os.makedirs(media_workdir, exist_ok=True)
+        if dry_run:
+            if os.path.exists(media_workdir):
+                existing_filenames = os.listdir(media_workdir)
+            else:
+                existing_filenames = []
+        else:
+            os.makedirs(media_workdir, exist_ok=True)
+            existing_filenames = os.listdir(media_workdir)
 
-        workdir_files = os.listdir(media_workdir)
+        existing_hashes = self._existing_media_hashes(existing_filenames)
 
         LOGGER.info("\tFound %s media files", len(media_files))
         downloaded_count = 0
+        would_download_count = 0
 
         for media_file in media_files:
             media_hash = media_file["hash"]
@@ -347,18 +373,12 @@ class Session(object):
             # files are saved as "{filename}-{hash}.{extension}"
             # older version might have used the format "{hash}-{filename}.{extension}"
 
-            found_existing_file = False
+            if media_hash in existing_hashes:
+                continue
 
-            for workdir_filename in workdir_files:
-                workdir_filename_split = workdir_filename.split("-")
-
-                if workdir_filename_split[0] == media_hash or \
-                        workdir_filename_split[-1].split(".")[0] == media_hash:
-                    found_existing_file = True
-                    break
-
-            # Skip this file if it already exists
-            if found_existing_file:
+            if dry_run:
+                LOGGER.info("\t\tWould download %s", media_hash)
+                would_download_count += 1
                 continue
 
             LOGGER.info("\t\tDownloading %s", media_hash)
@@ -401,9 +421,9 @@ class Session(object):
 
                 self._stream_response_to_file(response, filepath)
                 downloaded_count += 1
-                workdir_files.append(filename)
+                existing_hashes.add(media_hash)
 
                 self.plugins.hook("hook_file_download_successful", media_filename, course_save_as,
                                   filepath)
 
-        return downloaded_count
+        return {"downloaded": downloaded_count, "would_download": would_download_count}

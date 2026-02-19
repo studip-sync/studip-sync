@@ -12,6 +12,7 @@ from studip_sync.course_list_store import save_course_list
 from studip_sync.course_paths import get_course_save_as
 from studip_sync.logins import LoginError
 from studip_sync.log import get_logger
+from studip_sync.sync_report import build_sync_report, write_sync_report
 from studip_sync.plugins.plugins import PLUGINS
 from studip_sync.session import Session, DownloadError, MissingFeatureError, \
     MissingPermissionFolderError, SessionError
@@ -28,9 +29,9 @@ class StudIPRSync(object):
         self.files_destination_dir = CONFIG.files_destination
         self.media_destination_dir = CONFIG.media_destination
 
-        if self.files_destination_dir:
+        if self.files_destination_dir and not CONFIG.dry_run:
             os.makedirs(self.files_destination_dir, exist_ok=True)
-        if self.media_destination_dir:
+        if self.media_destination_dir and not CONFIG.dry_run:
             os.makedirs(self.media_destination_dir, exist_ok=True)
 
     def sync(self, sync_fully=False, sync_recent=False, use_api=True):
@@ -38,9 +39,12 @@ class StudIPRSync(object):
         stats = {
             "courses_total": 0,
             "courses_file_synced": 0,
+            "courses_file_would_sync": 0,
             "courses_file_skipped": 0,
             "files_downloaded": 0,
+            "files_would_download": 0,
             "media_downloaded": 0,
+            "media_would_download": 0,
             "errors": 0
         }
 
@@ -69,12 +73,14 @@ class StudIPRSync(object):
                 LOGGER.error(str(e))
                 return 1
 
-            if CONFIG.save_course_list:
+            if CONFIG.save_course_list and not CONFIG.dry_run:
                 try:
                     path = save_course_list(courses, CONFIG.config_dir)
                     LOGGER.info("Saved course list to: %s", path)
                 except OSError as e:
                     LOGGER.warning("Failed to save course list: %s", e)
+            elif CONFIG.save_course_list and CONFIG.dry_run:
+                LOGGER.info("Dry-run: skipping course_list.json write")
 
             if sync_recent:
                 LOGGER.info("Syncing only the most recent semester!")
@@ -91,10 +97,13 @@ class StudIPRSync(object):
                         files_root_dir = os.path.join(self.files_destination_dir, course_save_as)
 
                         result = CourseRSync(session, self.workdir, files_root_dir, course,
-                                             sync_fully, use_api).download()
+                                             sync_fully, use_api, CONFIG.dry_run).download()
                         stats["files_downloaded"] += result["files_downloaded"]
+                        stats["files_would_download"] += result["files_would_download"]
                         if result["synced"]:
                             stats["courses_file_synced"] += 1
+                        if result["would_sync"]:
+                            stats["courses_file_would_sync"] += 1
                         else:
                             stats["courses_file_skipped"] += 1
                     except MissingFeatureError:
@@ -113,9 +122,10 @@ class StudIPRSync(object):
                         media_root_dir = os.path.join(self.media_destination_dir,
                                                       course_save_as)
 
-                        media_downloaded = session.download_media(course["course_id"], media_root_dir,
-                                                                  course_save_as)
-                        stats["media_downloaded"] += media_downloaded
+                        media_stats = session.download_media(course["course_id"], media_root_dir,
+                                                             course_save_as, dry_run=CONFIG.dry_run)
+                        stats["media_downloaded"] += media_stats["downloaded"]
+                        stats["media_would_download"] += media_stats["would_download"]
                     except MissingFeatureError:
                         # Ignore if there is no media
                         pass
@@ -132,15 +142,35 @@ class StudIPRSync(object):
                             status_code = 2
                             stats["errors"] += 1
 
-        if self.files_destination_dir and status_code == 0:
+        if self.files_destination_dir and status_code == 0 and not CONFIG.dry_run:
             CONFIG.update_last_sync(int(time.time()))
+        elif self.files_destination_dir and status_code == 0 and CONFIG.dry_run:
+            LOGGER.info("Dry-run: not updating last_sync")
 
         LOGGER.info(
-            "Summary: courses=%s, file_synced=%s, file_skipped=%s, files_downloaded=%s, "
-            "media_downloaded=%s, errors=%s",
-            stats["courses_total"], stats["courses_file_synced"], stats["courses_file_skipped"],
-            stats["files_downloaded"], stats["media_downloaded"], stats["errors"]
+            "Summary: courses=%s, file_synced=%s, file_would_sync=%s, file_skipped=%s, "
+            "files_downloaded=%s, files_would_download=%s, media_downloaded=%s, "
+            "media_would_download=%s, errors=%s",
+            stats["courses_total"], stats["courses_file_synced"], stats["courses_file_would_sync"],
+            stats["courses_file_skipped"], stats["files_downloaded"], stats["files_would_download"],
+            stats["media_downloaded"], stats["media_would_download"], stats["errors"]
         )
+
+        if CONFIG.report_json_path:
+            report = build_sync_report(
+                mode="rsync",
+                status_code=status_code,
+                sync_fully=sync_fully,
+                sync_recent=sync_recent,
+                dry_run=CONFIG.dry_run,
+                use_api=use_api,
+                stats=stats
+            )
+            try:
+                write_sync_report(CONFIG.report_json_path, report)
+                LOGGER.info("Wrote sync report to: %s", CONFIG.report_json_path)
+            except OSError as e:
+                LOGGER.warning("Failed to write sync report: %s", e)
 
         return status_code
 
@@ -253,7 +283,7 @@ def is_file_new(file, file_path):
 
 class CourseRSync:
 
-    def __init__(self, session, workdir, root_folder, course, sync_fully, use_api):
+    def __init__(self, session, workdir, root_folder, course, sync_fully, use_api, dry_run):
         self.session = session
         self.workdir = workdir
         self.course_id = course["course_id"]
@@ -261,15 +291,22 @@ class CourseRSync:
         self.root_folder = root_folder
         self.sync_fully = sync_fully
         self.use_api = use_api
+        self.dry_run = dry_run
 
     def download(self):
         if self.course_has_new_files(self.sync_fully):
-            LOGGER.info("\tSyncing files...")
+            LOGGER.info("\t%s files...", "Would sync" if self.dry_run else "Syncing")
             downloaded = self.download_recursive()
-            return {"synced": True, "files_downloaded": downloaded}
+            return {
+                "synced": not self.dry_run,
+                "would_sync": True,
+                "files_downloaded": downloaded["downloaded"],
+                "files_would_download": downloaded["would_download"]
+            }
         else:
             LOGGER.info("\tSkipping this course...")
-            return {"synced": False, "files_downloaded": 0}
+            return {"synced": False, "would_sync": False, "files_downloaded": 0,
+                    "files_would_download": 0}
 
     def course_has_new_files(self, sync_fully=False):
         if sync_fully:
@@ -287,16 +324,22 @@ class CourseRSync:
                                                                               folder_id)
         except MissingPermissionFolderError:
             log("Couldn't view the following folder because of missing permissions: " + folder_path_relative)
-            return 0
+            return {"downloaded": 0, "would_download": 0}
 
         form_data_files, form_data_folders = check_and_cleanup_form_data(form_data_files,
                                                                          form_data_folders, self.use_api)
         downloaded_files = 0
+        would_download_files = 0
 
         for file_data in form_data_files:
             folder_absolute = os.path.join(self.root_folder, folder_path_relative)
             file_path = os.path.join(folder_absolute, file_data["name"])
             if is_file_new(file_data, file_path):
+                if self.dry_run:
+                    log("Would download: {}: {}".format(file_data["id"], file_data["name"]))
+                    would_download_files += 1
+                    continue
+
                 log("Downloading: {}: {}".format(file_data["id"], file_data["name"]))
 
                 target_file = os.path.join(self.workdir, file_data["id"])
@@ -343,6 +386,8 @@ class CourseRSync:
             new_folder_path_relative = os.path.join(folder_path_relative, folder_data["name"])
 
             # self.log("Accessing folder: " + folder_data["id"] + ": " + folder_data["name"])
-            downloaded_files += self.download_recursive(folder_data["id"], new_folder_path_relative)
+            recursive_stats = self.download_recursive(folder_data["id"], new_folder_path_relative)
+            downloaded_files += recursive_stats["downloaded"]
+            would_download_files += recursive_stats["would_download"]
 
-        return downloaded_files
+        return {"downloaded": downloaded_files, "would_download": would_download_files}

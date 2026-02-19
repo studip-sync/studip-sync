@@ -98,6 +98,18 @@ To sync only the last semester and skip older courses, use the `--recent` flag. 
 ./studip_sync.py
 ```
 
+### Dry run
+To inspect what would be downloaded without writing files:
+```shell
+./studip_sync.py --dry-run
+```
+
+### JSON report
+To write a machine-readable sync report:
+```shell
+./studip_sync.py --report-json /path/to/report.json
+```
+
 ### Network tuning
 If your Stud.IP instance is slow or unstable, you can tune request behavior:
 ```shell
@@ -120,6 +132,8 @@ courses. You can control this behavior using:
 
 The same behavior can be configured in `config.json` with:
 - `save_course_list`
+- `dry_run`
+- `report_json_path`
 
 ### Automation using a cron job
 Run `crontab -e` and add the following lines:

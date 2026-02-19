@@ -31,6 +31,12 @@ def parse_args():
     parser.add_argument("--disable-api", action="store_true",
                         help="don't use the StudIP API endpoint to download and discover files")
 
+    parser.add_argument("--dry-run", action="store_true",
+                        help="show what would be downloaded without writing files")
+
+    parser.add_argument("--report-json", metavar="PATH", default=None,
+                        help="write sync summary report as JSON to the given path")
+
     parser.add_argument("--http-timeout", metavar="SECONDS", type=float, default=None,
                         help="HTTP request timeout in seconds (default from config/constants)")
 

@@ -15,6 +15,7 @@ from studip_sync.log import get_logger
 from studip_sync.plugins.plugins import PLUGINS
 from studip_sync.session import Session, DownloadError, MissingFeatureError, SessionError
 from studip_sync.parsers import ParserError
+from studip_sync.sync_report import build_sync_report, write_sync_report
 
 LOGGER = get_logger(__name__)
 
@@ -35,9 +36,9 @@ class StudipSync(object):
 
         os.makedirs(self.download_dir)
         os.makedirs(self.extract_dir)
-        if self.files_destination_dir:
+        if self.files_destination_dir and not CONFIG.dry_run:
             os.makedirs(self.files_destination_dir, exist_ok=True)
-        if self.media_destination_dir:
+        if self.media_destination_dir and not CONFIG.dry_run:
             os.makedirs(self.media_destination_dir, exist_ok=True)
 
     def sync(self, sync_fully=False, sync_recent=False):
@@ -45,9 +46,12 @@ class StudipSync(object):
         stats = {
             "courses_total": 0,
             "courses_file_synced": 0,
+            "courses_file_would_sync": 0,
             "courses_file_skipped": 0,
             "files_downloaded": 0,
+            "files_would_download": 0,
             "media_downloaded": 0,
+            "media_would_download": 0,
             "errors": 0
         }
 
@@ -79,12 +83,14 @@ class StudipSync(object):
                 LOGGER.error(str(e))
                 return 1
 
-            if CONFIG.save_course_list:
+            if CONFIG.save_course_list and not CONFIG.dry_run:
                 try:
                     path = save_course_list(courses, CONFIG.config_dir)
                     LOGGER.info("Saved course list to: %s", path)
                 except OSError as e:
                     LOGGER.warning("Failed to save course list: %s", e)
+            elif CONFIG.save_course_list and CONFIG.dry_run:
+                LOGGER.info("Dry-run: skipping course_list.json write")
 
             if sync_recent:
                 LOGGER.info("Syncing only the most recent semester!")
@@ -99,12 +105,16 @@ class StudipSync(object):
                 if self.files_destination_dir:
                     try:
                         if sync_fully or session.check_course_new_files(course["course_id"], CONFIG.last_sync):
-                            LOGGER.info("\tDownloading files...")
-                            zip_location = session.download(
-                                course["course_id"], self.download_dir, course.get("sync_only"))
-                            extracted_dir = extractor.extract(zip_location, course_save_as)
-                            stats["files_downloaded"] += extractor.count_files(extracted_dir)
-                            stats["courses_file_synced"] += 1
+                            if CONFIG.dry_run:
+                                LOGGER.info("\tWould download files...")
+                                stats["courses_file_would_sync"] += 1
+                            else:
+                                LOGGER.info("\tDownloading files...")
+                                zip_location = session.download(
+                                    course["course_id"], self.download_dir, course.get("sync_only"))
+                                extracted_dir = extractor.extract(zip_location, course_save_as)
+                                stats["files_downloaded"] += extractor.count_files(extracted_dir)
+                                stats["courses_file_synced"] += 1
                         else:
                             LOGGER.info("\tSkipping this course...")
                             stats["courses_file_skipped"] += 1
@@ -127,9 +137,10 @@ class StudipSync(object):
                         media_course_dir = os.path.join(self.media_destination_dir,
                                                         course_save_as)
 
-                        media_downloaded = session.download_media(course["course_id"], media_course_dir,
-                                                                  course_save_as)
-                        stats["media_downloaded"] += media_downloaded
+                        media_stats = session.download_media(course["course_id"], media_course_dir,
+                                                             course_save_as, dry_run=CONFIG.dry_run)
+                        stats["media_downloaded"] += media_stats["downloaded"]
+                        stats["media_would_download"] += media_stats["would_download"]
                     except MissingFeatureError:
                         # Ignore if there is no media
                         pass
@@ -145,19 +156,39 @@ class StudipSync(object):
                             status_code = 2
                             stats["errors"] += 1
 
-        if self.files_destination_dir:
+        if self.files_destination_dir and not CONFIG.dry_run:
             LOGGER.info("Synchronizing with existing files...")
             rsync.sync(self.extract_dir + "/", self.files_destination_dir)
 
             if status_code == 0:
                 CONFIG.update_last_sync(int(time.time()))
+        elif self.files_destination_dir and CONFIG.dry_run:
+            LOGGER.info("Dry-run: skipping rsync and last_sync update")
 
         LOGGER.info(
-            "Summary: courses=%s, file_synced=%s, file_skipped=%s, files_downloaded=%s, "
-            "media_downloaded=%s, errors=%s",
-            stats["courses_total"], stats["courses_file_synced"], stats["courses_file_skipped"],
-            stats["files_downloaded"], stats["media_downloaded"], stats["errors"]
+            "Summary: courses=%s, file_synced=%s, file_would_sync=%s, file_skipped=%s, "
+            "files_downloaded=%s, files_would_download=%s, media_downloaded=%s, "
+            "media_would_download=%s, errors=%s",
+            stats["courses_total"], stats["courses_file_synced"], stats["courses_file_would_sync"],
+            stats["courses_file_skipped"], stats["files_downloaded"], stats["files_would_download"],
+            stats["media_downloaded"], stats["media_would_download"], stats["errors"]
         )
+
+        if CONFIG.report_json_path:
+            report = build_sync_report(
+                mode="legacy",
+                status_code=status_code,
+                sync_fully=sync_fully,
+                sync_recent=sync_recent,
+                dry_run=CONFIG.dry_run,
+                use_api=False,
+                stats=stats
+            )
+            try:
+                write_sync_report(CONFIG.report_json_path, report)
+                LOGGER.info("Wrote sync report to: %s", CONFIG.report_json_path)
+            except OSError as e:
+                LOGGER.warning("Failed to write sync report: %s", e)
 
         return status_code
 

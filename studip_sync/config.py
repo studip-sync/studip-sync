@@ -267,6 +267,34 @@ class Config(JSONConfig):
 
         return bool(self.config.get("save_course_list", True))
 
+    @property
+    def dry_run(self):
+        if self.args.dry_run:
+            return True
+
+        if not self.config:
+            return False
+
+        return bool(self.config.get("dry_run", False))
+
+    @property
+    def report_json_path(self):
+        if self.args.report_json is not None:
+            value = self.args.report_json
+        elif not self.config:
+            value = None
+        else:
+            value = self.config.get("report_json_path")
+
+        if value is None:
+            return None
+
+        value = str(value).strip()
+        if not value:
+            return None
+
+        return os.path.expanduser(value)
+
 
 try:
     CONFIG = Config()
