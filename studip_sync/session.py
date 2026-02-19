@@ -247,10 +247,10 @@ class Session(object):
             last_edit = parsers.extract_files_flat_last_edit(response.text)
 
         if last_edit == 0:
-            LOGGER.info("\tLast file edit couldn't be detected!")
+            LOGGER.debug("Last file edit couldn't be detected for course_id=%s", course_id)
         else:
-            LOGGER.info("\tLast file edit: %s",
-                        time.strftime("%d.%m.%Y %H:%M", time.gmtime(last_edit)))
+            LOGGER.debug("Last file edit for course_id=%s: %s", course_id,
+                         time.strftime("%d.%m.%Y %H:%M", time.gmtime(last_edit)))
         return last_edit == 0 or last_edit > last_sync
 
     def download(self, course_id, workdir, sync_only=None):
@@ -334,7 +334,8 @@ class Session(object):
             
             return res["file_refs"], res["subfolders"]
 
-    def download_media(self, course_id, media_workdir, course_save_as, dry_run=False):
+    def download_media(self, course_id, media_workdir, course_save_as, dry_run=False,
+                       checkpoint=None):
         params = {"cid": course_id}
 
         mediacast_list_url = self.url.mediacast_list()
@@ -360,11 +361,16 @@ class Session(object):
 
         existing_hashes = self._existing_media_hashes(existing_filenames)
 
-        LOGGER.info("\tFound %s media files", len(media_files))
+        LOGGER.debug("Found %s media files for course_id=%s", len(media_files), course_id)
         downloaded_count = 0
         would_download_count = 0
+        existing_count = 0
+        failed_count = 0
 
         for media_file in media_files:
+            if checkpoint:
+                checkpoint()
+
             media_hash = media_file["hash"]
             media_type = media_file["type"]
             media_player_url_relative = media_file["media_url"]
@@ -375,16 +381,19 @@ class Session(object):
             # older version might have used the format "{hash}-{filename}.{extension}"
 
             if media_hash in existing_hashes:
+                existing_count += 1
                 continue
 
             if dry_run:
-                LOGGER.info("\t\tWould download %s", media_hash)
+                LOGGER.debug("Would download media hash=%s", media_hash)
                 would_download_count += 1
                 continue
 
-            LOGGER.info("\t\tDownloading %s", media_hash)
+            LOGGER.debug("Downloading media hash=%s", media_hash)
 
             if media_type == "player":
+                if checkpoint:
+                    checkpoint()
                 with self.get(media_player_url, error_class=DownloadError,
                               action="Get media player page") as response:
                     if not response.ok:
@@ -400,10 +409,13 @@ class Session(object):
             else:
                 raise ParserError("media_type is not a valid type")
 
+            if checkpoint:
+                checkpoint()
             with self.get(download_media_url, error_class=DownloadError,
                           action="Download media file", stream=True) as response:
                 if not response.ok:
-                    LOGGER.warning("\t\tCannot download media file: %s", response)
+                    LOGGER.warning("Cannot download media file hash=%s: %s", media_hash, response)
+                    failed_count += 1
                     continue
 
                 media_filename = parsers.extract_filename_from_headers(response.headers)
@@ -427,4 +439,10 @@ class Session(object):
                 self.plugins.hook("hook_file_download_successful", media_filename, course_save_as,
                                   filepath)
 
-        return {"downloaded": downloaded_count, "would_download": would_download_count}
+        return {
+            "total": len(media_files),
+            "existing": existing_count,
+            "downloaded": downloaded_count,
+            "would_download": would_download_count,
+            "failed": failed_count
+        }

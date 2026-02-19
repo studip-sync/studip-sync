@@ -104,6 +104,18 @@ To inspect what would be downloaded without writing files:
 ./studip_sync.py --dry-run
 ```
 
+For detailed per-file diagnostics, add verbose logging:
+```shell
+./studip_sync.py -v
+```
+
+The default CLI output uses compact course lines (including a progress bar) and truncates
+long course names for readability.
+In interactive terminals you can control a running sync with:
+- `p` pause/resume
+- `q` abort gracefully
+- `h` show controls help
+
 ### JSON report
 To write a machine-readable sync report:
 ```shell

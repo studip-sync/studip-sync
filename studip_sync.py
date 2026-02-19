@@ -26,11 +26,16 @@ if ARGS.disable_plugin:
     with PluginHelper(ARGS.disable_plugin) as plugin_helper:
         exit(plugin_helper.disable())
 
-if ARGS.old:
-    from studip_sync.studip_sync import StudipSync
-    with StudipSync() as s:
-        exit(s.sync(ARGS.full, ARGS.recent))
-else:
-    from studip_sync.studip_rsync import StudIPRSync
-    with StudIPRSync() as s:
-        exit(s.sync(ARGS.full, ARGS.recent, not ARGS.disable_api))
+try:
+    if ARGS.old:
+        from studip_sync.studip_sync import StudipSync
+        with StudipSync() as s:
+            exit(s.sync(ARGS.full, ARGS.recent))
+    else:
+        from studip_sync.studip_rsync import StudIPRSync
+        with StudIPRSync() as s:
+            exit(s.sync(ARGS.full, ARGS.recent, not ARGS.disable_api))
+except KeyboardInterrupt:
+    from studip_sync.log import get_logger
+    get_logger(__name__).warning("Sync interrupted (Ctrl+C).")
+    exit(130)

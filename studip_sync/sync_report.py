@@ -3,11 +3,13 @@ from datetime import datetime, timezone
 from studip_sync.helpers import atomic_write_json
 
 
-def build_sync_report(mode, status_code, sync_fully, sync_recent, dry_run, use_api, stats):
+def build_sync_report(mode, status_code, sync_fully, sync_recent, dry_run, use_api, stats,
+                      aborted=False):
     return {
         "generated_at_utc": datetime.now(timezone.utc).isoformat(),
         "mode": mode,
         "status_code": status_code,
+        "aborted": bool(aborted),
         "sync_options": {
             "full": bool(sync_fully),
             "recent": bool(sync_recent),

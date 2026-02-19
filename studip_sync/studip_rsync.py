@@ -7,11 +7,14 @@ import unicodedata
 import string
 
 from studip_sync.arg_parser import ARGS
+from studip_sync.cli_ui import format_banner, format_controls_hint, format_course_header, \
+    format_status_line, format_summary_line
 from studip_sync.config import CONFIG
 from studip_sync.course_list_store import save_course_list
 from studip_sync.course_paths import get_course_save_as
 from studip_sync.logins import LoginError
 from studip_sync.log import get_logger
+from studip_sync.runtime_controls import RuntimeControls, UserAbortError
 from studip_sync.sync_report import build_sync_report, write_sync_report
 from studip_sync.plugins.plugins import PLUGINS
 from studip_sync.session import Session, DownloadError, MissingFeatureError, \
@@ -36,6 +39,7 @@ class StudIPRSync(object):
 
     def sync(self, sync_fully=False, sync_recent=False, use_api=True):
         PLUGINS.hook("hook_start")
+        LOGGER.info("%s", format_banner("rsync", sync_fully, sync_recent, CONFIG.dry_run, use_api))
         stats = {
             "courses_total": 0,
             "courses_file_synced": 0,
@@ -47,6 +51,9 @@ class StudIPRSync(object):
             "media_would_download": 0,
             "errors": 0
         }
+        status_code = 0
+        aborted = False
+        controls = RuntimeControls(enabled=True)
 
         with Session(
                 base_url=CONFIG.base_url,
@@ -86,70 +93,123 @@ class StudIPRSync(object):
                 LOGGER.info("Syncing only the most recent semester!")
 
             stats["courses_total"] = len(courses)
-            status_code = 0
-            for i in range(0, len(courses)):
-                course = courses[i]
-                course_save_as = get_course_save_as(course)
-                LOGGER.info("%s) %s", i + 1, course_save_as)
+            controls_enabled = controls.start()
+            LOGGER.info("%s", format_controls_hint(controls_enabled))
+            checkpoint = controls.checkpoint if controls_enabled else None
 
-                if self.files_destination_dir:
-                    try:
-                        files_root_dir = os.path.join(self.files_destination_dir, course_save_as)
+            try:
+                for i in range(0, len(courses)):
+                    if checkpoint:
+                        checkpoint()
 
-                        result = CourseRSync(session, self.workdir, files_root_dir, course,
-                                             sync_fully, use_api, CONFIG.dry_run).download()
-                        stats["files_downloaded"] += result["files_downloaded"]
-                        stats["files_would_download"] += result["files_would_download"]
-                        if result["synced"]:
-                            stats["courses_file_synced"] += 1
-                        if result["would_sync"]:
-                            stats["courses_file_would_sync"] += 1
-                        else:
-                            stats["courses_file_skipped"] += 1
-                    except MissingFeatureError:
-                        # Ignore if there are no files
-                        pass
-                    except DownloadError as e:
-                        LOGGER.error("\tDownload of files failed: %s", e)
-                        status_code = 2
-                        stats["errors"] += 1
+                    course = courses[i]
+                    course_save_as = get_course_save_as(course)
+                    LOGGER.info("%s", format_course_header(i + 1, len(courses), course_save_as))
 
-                if self.media_destination_dir:
-                    try:
-                        LOGGER.info("\tSyncing media files...")
+                    if self.files_destination_dir:
+                        try:
+                            files_root_dir = os.path.join(self.files_destination_dir, course_save_as)
 
-                        media_root_dir = os.path.join(self.media_destination_dir,
-                                                      course_save_as)
+                            result = CourseRSync(
+                                session,
+                                self.workdir,
+                                files_root_dir,
+                                course,
+                                sync_fully,
+                                use_api,
+                                CONFIG.dry_run,
+                                checkpoint=checkpoint
+                            ).download()
+                            stats["files_downloaded"] += result["files_downloaded"]
+                            stats["files_would_download"] += result["files_would_download"]
+                            if result["synced"]:
+                                stats["courses_file_synced"] += 1
+                            if result["would_sync"]:
+                                stats["courses_file_would_sync"] += 1
+                                LOGGER.info("%s", format_status_line(
+                                    "files",
+                                    "changed={}, downloaded={}, would_download={}".format(
+                                        result["changed_files"], result["files_downloaded"],
+                                        result["files_would_download"]
+                                    ),
+                                    state="ok"
+                                ))
+                            else:
+                                stats["courses_file_skipped"] += 1
+                                LOGGER.info("%s", format_status_line("files", "skipped", state="warn"))
+                        except MissingFeatureError:
+                            LOGGER.info("%s", format_status_line("files", "unavailable", state="warn"))
+                        except UserAbortError:
+                            raise
+                        except DownloadError as e:
+                            LOGGER.error("%s", format_status_line("files", "failed ({})".format(e),
+                                                                  state="error"))
+                            status_code = 2
+                            stats["errors"] += 1
 
-                        media_stats = session.download_media(course["course_id"], media_root_dir,
-                                                             course_save_as, dry_run=CONFIG.dry_run)
-                        stats["media_downloaded"] += media_stats["downloaded"]
-                        stats["media_would_download"] += media_stats["would_download"]
-                    except MissingFeatureError:
-                        # Ignore if there is no media
-                        pass
-                    except DownloadError as e:
-                        LOGGER.error("\tDownload of media failed: %s", e)
-                        status_code = 2
-                        stats["errors"] += 1
-                    except ParserError as e:
-                        LOGGER.error("\tDownload of media failed: %s", e)
-                        status_code = 2
-                        stats["errors"] += 1
+                    if self.media_destination_dir:
+                        try:
+                            if checkpoint:
+                                checkpoint()
+
+                            media_root_dir = os.path.join(self.media_destination_dir, course_save_as)
+                            media_stats = session.download_media(
+                                course["course_id"],
+                                media_root_dir,
+                                course_save_as,
+                                dry_run=CONFIG.dry_run,
+                                checkpoint=checkpoint
+                            )
+                            stats["media_downloaded"] += media_stats["downloaded"]
+                            stats["media_would_download"] += media_stats["would_download"]
+                            state = "warn" if media_stats["failed"] else "ok"
+                            LOGGER.info("%s", format_status_line(
+                                "media",
+                                "total={}, existing={}, downloaded={}, would_download={}, failed={}".format(
+                                    media_stats["total"], media_stats["existing"], media_stats["downloaded"],
+                                    media_stats["would_download"], media_stats["failed"]
+                                ),
+                                state=state
+                            ))
+                        except MissingFeatureError:
+                            LOGGER.info("%s", format_status_line("media", "unavailable", state="warn"))
+                        except UserAbortError:
+                            raise
+                        except DownloadError as e:
+                            LOGGER.error("%s", format_status_line("media", "failed ({})".format(e),
+                                                                  state="error"))
+                            status_code = 2
+                            stats["errors"] += 1
+                        except ParserError as e:
+                            LOGGER.error("%s", format_status_line("media", "failed ({})".format(e),
+                                                                  state="error"))
+                            status_code = 2
+                            stats["errors"] += 1
+            except UserAbortError:
+                aborted = True
+                status_code = 130
+                LOGGER.warning("Sync aborted by user.")
+            except KeyboardInterrupt:
+                aborted = True
+                status_code = 130
+                LOGGER.warning("Sync interrupted (Ctrl+C).")
+            finally:
+                controls.stop()
 
         if self.files_destination_dir and status_code == 0 and not CONFIG.dry_run:
             CONFIG.update_last_sync(int(time.time()))
         elif self.files_destination_dir and status_code == 0 and CONFIG.dry_run:
             LOGGER.info("Dry-run: not updating last_sync")
 
-        LOGGER.info(
-            "Summary: courses=%s, file_synced=%s, file_would_sync=%s, file_skipped=%s, "
-            "files_downloaded=%s, files_would_download=%s, media_downloaded=%s, "
-            "media_would_download=%s, errors=%s",
-            stats["courses_total"], stats["courses_file_synced"], stats["courses_file_would_sync"],
-            stats["courses_file_skipped"], stats["files_downloaded"], stats["files_would_download"],
-            stats["media_downloaded"], stats["media_would_download"], stats["errors"]
-        )
+        LOGGER.info("%s", format_summary_line(status_code, stats, aborted=aborted))
+        LOGGER.info("%s", format_status_line(
+            "summary",
+            "file_skipped={}, files_would_download={}, media_would_download={}".format(
+                stats["courses_file_skipped"], stats["files_would_download"],
+                stats["media_would_download"]
+            ),
+            state="info"
+        ))
 
         if CONFIG.report_json_path:
             report = build_sync_report(
@@ -159,7 +219,8 @@ class StudIPRSync(object):
                 sync_recent=sync_recent,
                 dry_run=CONFIG.dry_run,
                 use_api=use_api,
-                stats=stats
+                stats=stats,
+                aborted=aborted
             )
             try:
                 write_sync_report(CONFIG.report_json_path, report)
@@ -243,10 +304,8 @@ def check_and_cleanup_form_data(form_data_files, form_data_folders, use_api):
 
 
 def log(message, flush=False):
-    if flush:
-        LOGGER.info("\t\t%s", message)
-    else:
-        LOGGER.info("\t\t%s", message)
+    _ = flush
+    LOGGER.debug("%s", message)
 
 
 def is_file_new(file, file_path):
@@ -278,7 +337,8 @@ def is_file_new(file, file_path):
 
 class CourseRSync:
 
-    def __init__(self, session, workdir, root_folder, course, sync_fully, use_api, dry_run):
+    def __init__(self, session, workdir, root_folder, course, sync_fully, use_api, dry_run,
+                 checkpoint=None):
         self.session = session
         self.workdir = workdir
         self.course_id = course["course_id"]
@@ -287,21 +347,21 @@ class CourseRSync:
         self.sync_fully = sync_fully
         self.use_api = use_api
         self.dry_run = dry_run
+        self.checkpoint = checkpoint
 
     def download(self):
         if self.course_has_new_files(self.sync_fully):
-            LOGGER.info("\t%s files...", "Would sync" if self.dry_run else "Syncing")
             downloaded = self.download_recursive()
             return {
                 "synced": not self.dry_run,
                 "would_sync": True,
+                "changed_files": downloaded["changed"],
                 "files_downloaded": downloaded["downloaded"],
                 "files_would_download": downloaded["would_download"]
             }
         else:
-            LOGGER.info("\tSkipping this course...")
-            return {"synced": False, "would_sync": False, "files_downloaded": 0,
-                    "files_would_download": 0}
+            return {"synced": False, "would_sync": False, "changed_files": 0,
+                    "files_downloaded": 0, "files_would_download": 0}
 
     def course_has_new_files(self, sync_fully=False):
         if sync_fully:
@@ -310,6 +370,9 @@ class CourseRSync:
         return self.session.check_course_new_files(self.course_id, CONFIG.last_sync)
 
     def download_recursive(self, folder_id=None, folder_path_relative=""):
+        if self.checkpoint:
+            self.checkpoint()
+
         try:
             if self.use_api:
                 form_data_files, form_data_folders = self.session.get_files_index_from_api(self.course_id,
@@ -319,17 +382,22 @@ class CourseRSync:
                                                                               folder_id)
         except MissingPermissionFolderError:
             log("Couldn't view the following folder because of missing permissions: " + folder_path_relative)
-            return {"downloaded": 0, "would_download": 0}
+            return {"downloaded": 0, "would_download": 0, "changed": 0}
 
         form_data_files, form_data_folders = check_and_cleanup_form_data(form_data_files,
                                                                          form_data_folders, self.use_api)
         downloaded_files = 0
         would_download_files = 0
+        changed_files = 0
 
         for file_data in form_data_files:
+            if self.checkpoint:
+                self.checkpoint()
+
             folder_absolute = os.path.join(self.root_folder, folder_path_relative)
             file_path = os.path.join(folder_absolute, file_data["name"])
             if is_file_new(file_data, file_path):
+                changed_files += 1
                 if self.dry_run:
                     log("Would download: {}: {}".format(file_data["id"], file_data["name"]))
                     would_download_files += 1
@@ -378,11 +446,16 @@ class CourseRSync:
                                           self.course_save_as, file_path)
 
         for folder_data in form_data_folders:
+            if self.checkpoint:
+                self.checkpoint()
+
             new_folder_path_relative = os.path.join(folder_path_relative, folder_data["name"])
 
             # self.log("Accessing folder: " + folder_data["id"] + ": " + folder_data["name"])
             recursive_stats = self.download_recursive(folder_data["id"], new_folder_path_relative)
             downloaded_files += recursive_stats["downloaded"]
             would_download_files += recursive_stats["would_download"]
+            changed_files += recursive_stats["changed"]
 
-        return {"downloaded": downloaded_files, "would_download": would_download_files}
+        return {"downloaded": downloaded_files, "would_download": would_download_files,
+                "changed": changed_files}
