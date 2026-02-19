@@ -11,9 +11,12 @@ from studip_sync.config import CONFIG
 from studip_sync.course_list_store import save_course_list
 from studip_sync.course_paths import get_course_save_as
 from studip_sync.logins import LoginError
+from studip_sync.log import get_logger
 from studip_sync.plugins.plugins import PLUGINS
 from studip_sync.session import Session, DownloadError, MissingFeatureError, SessionError
 from studip_sync.parsers import ParserError
+
+LOGGER = get_logger(__name__)
 
 
 class ExtractionError(Exception):
@@ -39,6 +42,14 @@ class StudipSync(object):
 
     def sync(self, sync_fully=False, sync_recent=False):
         PLUGINS.hook("hook_start")
+        stats = {
+            "courses_total": 0,
+            "courses_file_synced": 0,
+            "courses_file_skipped": 0,
+            "files_downloaded": 0,
+            "media_downloaded": 0,
+            "errors": 0
+        }
 
         extractor = Extractor(self.extract_dir)
         rsync = RsyncWrapper()
@@ -50,86 +61,103 @@ class StudipSync(object):
                 retry_total=CONFIG.http_retry_total,
                 retry_backoff_factor=CONFIG.http_retry_backoff_factor,
                 retry_status_forcelist=CONFIG.http_retry_status_forcelist) as session:
-            print("Logging in...")
+            LOGGER.info("Logging in...")
             try:
                 session.login(CONFIG.auth_type, CONFIG.auth_type_data, CONFIG.username,
                               CONFIG.password)
             except (LoginError, ParserError) as e:
-                print("Login failed!")
-                print(e)
+                LOGGER.error("Login failed!")
+                LOGGER.error(str(e))
                 return 1
 
-            print("Downloading course list...")
+            LOGGER.info("Downloading course list...")
 
             try:
                 courses = list(session.get_courses(sync_recent))
             except (LoginError, ParserError, SessionError) as e:
-                print("Downloading course list failed!")
-                print(e)
+                LOGGER.error("Downloading course list failed!")
+                LOGGER.error(str(e))
                 return 1
 
-            try:
-                path = save_course_list(courses, CONFIG.config_dir)
-                print("Saved course list to: " + path)
-            except OSError as e:
-                print("Warning: failed to save course list: " + str(e))
+            if CONFIG.save_course_list:
+                try:
+                    path = save_course_list(courses, CONFIG.config_dir)
+                    LOGGER.info("Saved course list to: %s", path)
+                except OSError as e:
+                    LOGGER.warning("Failed to save course list: %s", e)
 
             if sync_recent:
-                print("Syncing only the most recent semester!")
+                LOGGER.info("Syncing only the most recent semester!")
 
+            stats["courses_total"] = len(courses)
             status_code = 0
             for i in range(0, len(courses)):
                 course = courses[i]
                 course_save_as = get_course_save_as(course)
-                print("{}) {}".format(i+1, course_save_as))
+                LOGGER.info("%s) %s", i + 1, course_save_as)
 
                 if self.files_destination_dir:
                     try:
                         if sync_fully or session.check_course_new_files(course["course_id"], CONFIG.last_sync):
-                            print("\tDownloading files...")
+                            LOGGER.info("\tDownloading files...")
                             zip_location = session.download(
                                 course["course_id"], self.download_dir, course.get("sync_only"))
-                            extractor.extract(zip_location, course_save_as)
+                            extracted_dir = extractor.extract(zip_location, course_save_as)
+                            stats["files_downloaded"] += extractor.count_files(extracted_dir)
+                            stats["courses_file_synced"] += 1
                         else:
-                            print("\tSkipping this course...")
+                            LOGGER.info("\tSkipping this course...")
+                            stats["courses_file_skipped"] += 1
                     except MissingFeatureError:
                         # Ignore if there are no files
                         pass
                     except DownloadError as e:
-                        print("\tDownload of files failed: " + str(e))
+                        LOGGER.error("\tDownload of files failed: %s", e)
                         status_code = 2
+                        stats["errors"] += 1
                     except ExtractionError as e:
-                        print("\tExtracting files failed: " + str(e))
+                        LOGGER.error("\tExtracting files failed: %s", e)
                         status_code = 2
+                        stats["errors"] += 1
 
                 if self.media_destination_dir:
                     try:
-                        print("\tSyncing media files...")
+                        LOGGER.info("\tSyncing media files...")
 
                         media_course_dir = os.path.join(self.media_destination_dir,
                                                         course_save_as)
 
-                        session.download_media(course["course_id"], media_course_dir,
-                                               course_save_as)
+                        media_downloaded = session.download_media(course["course_id"], media_course_dir,
+                                                                  course_save_as)
+                        stats["media_downloaded"] += media_downloaded
                     except MissingFeatureError:
                         # Ignore if there is no media
                         pass
                     except DownloadError as e:
-                        print("\tDownload of media failed: " + str(e))
+                        LOGGER.error("\tDownload of media failed: %s", e)
                         status_code = 2
+                        stats["errors"] += 1
                     except ParserError as e:
-                        print("\tDownload of media failed: " + str(e))
+                        LOGGER.error("\tDownload of media failed: %s", e)
                         if status_code != 0:
                             raise
                         else:
                             status_code = 2
+                            stats["errors"] += 1
 
         if self.files_destination_dir:
-            print("Synchronizing with existing files...")
+            LOGGER.info("Synchronizing with existing files...")
             rsync.sync(self.extract_dir + "/", self.files_destination_dir)
 
             if status_code == 0:
                 CONFIG.update_last_sync(int(time.time()))
+
+        LOGGER.info(
+            "Summary: courses=%s, file_synced=%s, file_skipped=%s, files_downloaded=%s, "
+            "media_downloaded=%s, errors=%s",
+            stats["courses_total"], stats["courses_file_synced"], stats["courses_file_skipped"],
+            stats["files_downloaded"], stats["media_downloaded"], stats["errors"]
+        )
 
         return status_code
 
@@ -185,6 +213,13 @@ class Extractor(object):
         filelist = os.path.join(directory, "archive_filelist.csv")
         if os.path.isfile(filelist):
             os.remove(filelist)
+
+    @staticmethod
+    def count_files(directory):
+        file_count = 0
+        for _, _, files in os.walk(directory):
+            file_count += len(files)
+        return file_count
 
     def extract(self, archive_filename, destination, cleanup=True):
         try:

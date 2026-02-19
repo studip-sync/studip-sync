@@ -19,7 +19,7 @@ class Config(JSONConfig):
 
         config_path = get_config_file()
 
-        self.config_dir = os.path.dirname(config_path)
+        self.config_dir = os.path.dirname(config_path) or "."
 
         self._username = None
         self._password = None
@@ -53,6 +53,9 @@ class Config(JSONConfig):
         for status_code in self.http_retry_status_forcelist:
             if status_code < 100 or status_code > 599:
                 raise ConfigError("http_retry_status_forcelist contains invalid HTTP status code")
+
+        if self.args.save_course_list and self.args.no_save_course_list:
+            raise ConfigError("--save-course-list and --no-save-course-list are mutually exclusive")
 
     @property
     def last_sync(self):
@@ -250,6 +253,19 @@ class Config(JSONConfig):
             value = self.config.get("http_retry_status_forcelist", HTTP_RETRY_STATUS_FORCELIST)
 
         return self._parse_status_codes(value, "http_retry_status_forcelist")
+
+    @property
+    def save_course_list(self):
+        if self.args.save_course_list:
+            return True
+
+        if self.args.no_save_course_list:
+            return False
+
+        if not self.config:
+            return True
+
+        return bool(self.config.get("save_course_list", True))
 
 
 try:

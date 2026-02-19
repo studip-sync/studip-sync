@@ -1,5 +1,10 @@
 import json
 import os
+import tempfile
+
+from studip_sync.log import get_logger
+
+LOGGER = get_logger(__name__)
 
 
 class ConfigError(Exception):
@@ -28,7 +33,26 @@ class JSONConfig(object):
 
     @staticmethod
     def save_config(path, config):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as config_file:
-            print("Writing new config to '{}'".format(path))
-            json.dump(config, config_file, ensure_ascii=False, indent=4)
+        directory = os.path.dirname(path) or "."
+        os.makedirs(directory, exist_ok=True)
+        atomic_write_json(path, config)
+        LOGGER.info("Writing new config to '%s'", path)
+
+
+def atomic_write_json(path, data):
+    directory = os.path.dirname(path) or "."
+    os.makedirs(directory, exist_ok=True)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", dir=directory,
+                                         prefix=".tmp-", suffix=".json", delete=False) as temp_file:
+            json.dump(data, temp_file, ensure_ascii=False, indent=4)
+            temp_file.flush()
+            os.fsync(temp_file.fileno())
+            temp_path = temp_file.name
+
+        os.replace(temp_path, path)
+    except Exception:
+        if temp_path and os.path.exists(temp_path):
+            os.remove(temp_path)
+        raise

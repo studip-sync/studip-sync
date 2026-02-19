@@ -4,10 +4,10 @@ import argparse
 def parse_args():
     parser = argparse.ArgumentParser(description="Synchronize Stud.IP files")
 
-    parser.add_argument("-c", "--config", metavar="DIR",
+    parser.add_argument("-c", "--config", metavar="PATH",
                         default=None,
-                        help="set the path to the config dir (Default is "
-                             "'~/.config/studip-sync/')")
+                        help="set config dir or config file path (Default is "
+                             "'~/.config/studip-sync/config.json')")
 
     parser.add_argument("-d", "--destination", metavar="DIR", default=None,
                         help="synchronize files to the given destination directory (If no config "
@@ -42,6 +42,12 @@ def parse_args():
 
     parser.add_argument("--http-retry-status", metavar="CODES", default=None,
                         help="comma-separated HTTP status codes to retry, e.g. 429,500,502")
+
+    course_list_group = parser.add_mutually_exclusive_group()
+    course_list_group.add_argument("--save-course-list", action="store_true",
+                                   help="save discovered courses to course_list.json")
+    course_list_group.add_argument("--no-save-course-list", action="store_true",
+                                   help="disable writing course_list.json")
 
     # PLUGINS
     parser.add_argument("--enable-plugin", metavar="PLUGIN",

@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 from studip_sync.arg_parser import ARGS
+from studip_sync.log import configure_logging
 from studip_sync.config_creator import ConfigCreator
+
+configure_logging(ARGS.v)
 
 if ARGS.init:
     with ConfigCreator() as creator:
@@ -31,4 +34,3 @@ else:
     from studip_sync.studip_rsync import StudIPRSync
     with StudIPRSync() as s:
         exit(s.sync(ARGS.full, ARGS.recent, not ARGS.disable_api))
-

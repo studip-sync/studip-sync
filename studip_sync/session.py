@@ -1,5 +1,6 @@
 import os
 import shutil
+import tempfile
 import time
 import urllib.parse
 import json
@@ -11,9 +12,12 @@ from urllib3.util.retry import Retry
 from studip_sync import parsers
 from studip_sync.constants import URL_BASEURL_DEFAULT, AUTHENTICATION_TYPES, \
     HTTP_REQUEST_TIMEOUT, HTTP_RETRY_TOTAL, HTTP_RETRY_BACKOFF_FACTOR, \
-    HTTP_RETRY_STATUS_FORCELIST
+    HTTP_RETRY_STATUS_FORCELIST, HTTP_DEBUG_RESPONSE_MAX_CHARS
+from studip_sync.log import get_logger
 from studip_sync.parsers import ParserError
 from studip_sync.plugins.plugin_list import PluginList
+
+LOGGER = get_logger(__name__)
 
 
 class SessionError(Exception):
@@ -119,6 +123,31 @@ class Session(object):
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
 
+    @staticmethod
+    def _log_response_debug(response, message):
+        body = response.text[:HTTP_DEBUG_RESPONSE_MAX_CHARS]
+        LOGGER.debug("%s (status=%s, body=%r)", message, response.status_code, body)
+
+    @staticmethod
+    def _stream_response_to_file(response, path):
+        directory = os.path.dirname(path) or "."
+        os.makedirs(directory, exist_ok=True)
+
+        temp_path = None
+        try:
+            with tempfile.NamedTemporaryFile("wb", dir=directory, prefix=".part-",
+                                             delete=False) as file:
+                shutil.copyfileobj(response.raw, file)
+                file.flush()
+                os.fsync(file.fileno())
+                temp_path = file.name
+
+            os.replace(temp_path, path)
+        except Exception:
+            if temp_path and os.path.exists(temp_path):
+                os.remove(temp_path)
+            raise
+
     def request(self, method, url, error_class=SessionError, action="request", **kwargs):
         kwargs.setdefault("timeout", self.request_timeout)
 
@@ -199,10 +228,10 @@ class Session(object):
             last_edit = parsers.extract_files_flat_last_edit(response.text)
 
         if last_edit == 0:
-            print("\tLast file edit couldn't be detected!")
+            LOGGER.info("\tLast file edit couldn't be detected!")
         else:
-            print("\tLast file edit: {}".format(
-                time.strftime("%d.%m.%Y %H:%M", time.gmtime(last_edit))))
+            LOGGER.info("\tLast file edit: %s",
+                        time.strftime("%d.%m.%Y %H:%M", time.gmtime(last_edit)))
         return last_edit == 0 or last_edit > last_sync
 
     def download(self, course_id, workdir, sync_only=None):
@@ -228,9 +257,8 @@ class Session(object):
             if not response.ok:
                 raise DownloadError("Cannot download course files")
             path = os.path.join(workdir, course_id)
-            with open(path, "wb") as download_file:
-                shutil.copyfileobj(response.raw, download_file)
-                return path
+            self._stream_response_to_file(response, path)
+            return path
 
     def download_file(self, download_url, tempfile):
         with self.post(download_url, error_class=DownloadError, action="Download file",
@@ -238,8 +266,7 @@ class Session(object):
             if not response.ok:
                 raise DownloadError("Cannot download file")
 
-            with open(tempfile, "wb") as file:
-                shutil.copyfileobj(response.raw, file)
+            self._stream_response_to_file(response, tempfile)
 
 
     def download_file_api(self, file_id, tempfile):
@@ -248,11 +275,10 @@ class Session(object):
         with self.get(download_url, error_class=DownloadError, action="Download file via API",
                       stream=True) as response:
             if not response.ok:
-                print(response.text)
+                self._log_response_debug(response, "Cannot download file via API")
                 raise DownloadError("Cannot download file")
 
-            with open(tempfile, "wb") as file:
-                shutil.copyfileobj(response.raw, file)
+            self._stream_response_to_file(response, tempfile)
 
     def get_files_index(self, course_id, folder_id=None):
         params = {"cid": course_id}
@@ -282,7 +308,7 @@ class Session(object):
 
         with self.get(url, error_class=DownloadError, action="Get files index from API") as response:
             if not response.ok:
-                print(response.text)
+                self._log_response_debug(response, "Cannot access course files/files_index page")
                 raise DownloadError("Cannot access course files/files_index page")
 
             res = json.loads(response.text)
@@ -308,7 +334,8 @@ class Session(object):
 
         workdir_files = os.listdir(media_workdir)
 
-        print("\tFound {} media files".format(len(media_files)))
+        LOGGER.info("\tFound %s media files", len(media_files))
+        downloaded_count = 0
 
         for media_file in media_files:
             media_hash = media_file["hash"]
@@ -334,7 +361,7 @@ class Session(object):
             if found_existing_file:
                 continue
 
-            print("\t\tDownloading " + media_hash)
+            LOGGER.info("\t\tDownloading %s", media_hash)
 
             if media_type == "player":
                 with self.get(media_player_url, error_class=DownloadError,
@@ -355,7 +382,7 @@ class Session(object):
             with self.get(download_media_url, error_class=DownloadError,
                           action="Download media file", stream=True) as response:
                 if not response.ok:
-                    print("\t\tCannot download media file: " + str(response))
+                    LOGGER.warning("\t\tCannot download media file: %s", response)
                     continue
 
                 media_filename = parsers.extract_filename_from_headers(response.headers)
@@ -372,12 +399,11 @@ class Session(object):
                     raise FileError(
                         "Cannot access filepath since file already exists: " + filepath)
 
-                try:
-                    with open(filepath, "wb") as download_file:
-                        shutil.copyfileobj(response.raw, download_file)
-                except OSError as e:
-                    os.remove(filepath)
-                    raise
+                self._stream_response_to_file(response, filepath)
+                downloaded_count += 1
+                workdir_files.append(filename)
 
                 self.plugins.hook("hook_file_download_successful", media_filename, course_save_as,
                                   filepath)
+
+        return downloaded_count

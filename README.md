@@ -88,8 +88,11 @@ To sync only the last semester and skip older courses, use the `--recent` flag. 
 ### Running studip-sync manually
 ```shell
 # Synchronizes files to /path/to/sync/dir
-# and uses a non-default location for the config file (here: ./config.json)
+# and uses a non-default location for the config directory (here: ./config.json)
 ./studip_sync.py -c ./ -d /path/to/sync/dir
+
+# You can also provide a config file path directly:
+./studip_sync.py -c ./custom-config.json -d /path/to/sync/dir
 
 # Reads all parameters from ~/.config/studip-sync/config.json
 ./studip_sync.py
@@ -106,6 +109,17 @@ The same values can also be placed in `config.json`:
 - `http_retries`
 - `http_retry_backoff_factor`
 - `http_retry_status_forcelist`
+
+### Course list export
+By default, studip-sync writes a `course_list.json` file to the config directory after loading
+courses. You can control this behavior using:
+```shell
+./studip_sync.py --save-course-list
+./studip_sync.py --no-save-course-list
+```
+
+The same behavior can be configured in `config.json` with:
+- `save_course_list`
 
 ### Automation using a cron job
 Run `crontab -e` and add the following lines:

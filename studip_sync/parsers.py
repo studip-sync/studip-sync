@@ -4,6 +4,9 @@ from email.message import EmailMessage
 
 from functools import wraps
 from bs4 import BeautifulSoup
+from studip_sync.log import get_logger
+
+LOGGER = get_logger(__name__)
 
 def log_html_on_exception():
     def decorator(func):
@@ -12,7 +15,7 @@ def log_html_on_exception():
             try:
                 return func(html, *args, **kwargs)
             except Exception as e:
-                print(html)
+                LOGGER.debug("Parser failed in %s, html excerpt=%r", func.__name__, html[:2000])
 
                 raise
 
