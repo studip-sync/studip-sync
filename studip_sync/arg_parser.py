@@ -40,6 +40,9 @@ def parse_args():
     parser.add_argument("--http-retry-backoff", metavar="SECONDS", type=float, default=None,
                         help="backoff factor used between HTTP retries")
 
+    parser.add_argument("--http-retry-status", metavar="CODES", default=None,
+                        help="comma-separated HTTP status codes to retry, e.g. 429,500,502")
+
     # PLUGINS
     parser.add_argument("--enable-plugin", metavar="PLUGIN",
                         help="enables and configures a plugin")

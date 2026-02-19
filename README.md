@@ -98,13 +98,14 @@ To sync only the last semester and skip older courses, use the `--recent` flag. 
 ### Network tuning
 If your Stud.IP instance is slow or unstable, you can tune request behavior:
 ```shell
-./studip_sync.py --http-timeout 60 --http-retries 5 --http-retry-backoff 1.0
+./studip_sync.py --http-timeout 60 --http-retries 5 --http-retry-backoff 1.0 --http-retry-status 429,500,502,503,504
 ```
 
 The same values can also be placed in `config.json`:
 - `http_timeout`
 - `http_retries`
 - `http_retry_backoff_factor`
+- `http_retry_status_forcelist`
 
 ### Automation using a cron job
 Run `crontab -e` and add the following lines:

@@ -81,7 +81,8 @@ class Session(object):
 
     def __init__(self, plugins=None, base_url=URL_BASEURL_DEFAULT,
                  request_timeout=HTTP_REQUEST_TIMEOUT, retry_total=HTTP_RETRY_TOTAL,
-                 retry_backoff_factor=HTTP_RETRY_BACKOFF_FACTOR):
+                 retry_backoff_factor=HTTP_RETRY_BACKOFF_FACTOR,
+                 retry_status_forcelist=HTTP_RETRY_STATUS_FORCELIST):
         super(Session, self).__init__()
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "WeWantFileSync"})
@@ -89,6 +90,7 @@ class Session(object):
         self.request_timeout = request_timeout
         self.retry_total = retry_total
         self.retry_backoff_factor = retry_backoff_factor
+        self.retry_status_forcelist = tuple(retry_status_forcelist)
         self._configure_http()
 
         if plugins is None:
@@ -109,7 +111,7 @@ class Session(object):
             read=self.retry_total,
             status=self.retry_total,
             backoff_factor=self.retry_backoff_factor,
-            status_forcelist=HTTP_RETRY_STATUS_FORCELIST,
+            status_forcelist=self.retry_status_forcelist,
             allowed_methods=frozenset(["GET", "POST"])
         )
 

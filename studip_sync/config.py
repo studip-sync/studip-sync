@@ -8,7 +8,7 @@ from studip_sync.arg_parser import ARGS
 from studip_sync.config_creator import ConfigCreator
 from studip_sync.constants import URL_BASEURL_DEFAULT, AUTHENTICATION_TYPE_DEFAULT, \
     AUTHENTICATION_TYPE_DATA_DEFAULT, AUTHENTICATION_TYPES, HTTP_REQUEST_TIMEOUT, \
-    HTTP_RETRY_TOTAL, HTTP_RETRY_BACKOFF_FACTOR
+    HTTP_RETRY_TOTAL, HTTP_RETRY_BACKOFF_FACTOR, HTTP_RETRY_STATUS_FORCELIST
 from studip_sync.helpers import JSONConfig, ConfigError
 
 
@@ -49,6 +49,10 @@ class Config(JSONConfig):
 
         if self.http_retry_backoff_factor < 0:
             raise ConfigError("http_retry_backoff_factor must be >= 0")
+
+        for status_code in self.http_retry_status_forcelist:
+            if status_code < 100 or status_code > 599:
+                raise ConfigError("http_retry_status_forcelist contains invalid HTTP status code")
 
     @property
     def last_sync(self):
@@ -101,6 +105,25 @@ class Config(JSONConfig):
             return cast_type(value)
         except (TypeError, ValueError) as e:
             raise ConfigError("{} has an invalid value".format(key_name)) from e
+
+    @staticmethod
+    def _parse_status_codes(value, key_name):
+        if isinstance(value, str):
+            if not value.strip():
+                return tuple()
+            raw_values = value.split(",")
+        elif isinstance(value, (list, tuple)):
+            raw_values = value
+        else:
+            raise ConfigError("{} has an invalid value".format(key_name))
+
+        parsed_values = []
+        for raw_value in raw_values:
+            status_code = Config._cast_numeric(raw_value, int, key_name)
+            if status_code not in parsed_values:
+                parsed_values.append(status_code)
+
+        return tuple(parsed_values)
 
     @property
     def username(self):
@@ -216,6 +239,17 @@ class Config(JSONConfig):
             value = self.config.get("http_retry_backoff_factor", HTTP_RETRY_BACKOFF_FACTOR)
 
         return self._cast_numeric(value, float, "http_retry_backoff_factor")
+
+    @property
+    def http_retry_status_forcelist(self):
+        if self.args.http_retry_status is not None:
+            value = self.args.http_retry_status
+        elif not self.config:
+            value = HTTP_RETRY_STATUS_FORCELIST
+        else:
+            value = self.config.get("http_retry_status_forcelist", HTTP_RETRY_STATUS_FORCELIST)
+
+        return self._parse_status_codes(value, "http_retry_status_forcelist")
 
 
 try:
