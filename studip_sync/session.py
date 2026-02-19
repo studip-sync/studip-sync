@@ -116,6 +116,7 @@ class Session(object):
             status=self.retry_total,
             backoff_factor=self.retry_backoff_factor,
             status_forcelist=self.retry_status_forcelist,
+            raise_on_status=False,
             allowed_methods=frozenset(["GET", "POST"])
         )
 

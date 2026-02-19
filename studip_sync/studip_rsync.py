@@ -113,7 +113,6 @@ class StudIPRSync(object):
                         LOGGER.error("\tDownload of files failed: %s", e)
                         status_code = 2
                         stats["errors"] += 1
-                        raise
 
                 if self.media_destination_dir:
                     try:
@@ -133,14 +132,10 @@ class StudIPRSync(object):
                         LOGGER.error("\tDownload of media failed: %s", e)
                         status_code = 2
                         stats["errors"] += 1
-                        raise
                     except ParserError as e:
                         LOGGER.error("\tDownload of media failed: %s", e)
-                        if status_code != 0:
-                            raise
-                        else:
-                            status_code = 2
-                            stats["errors"] += 1
+                        status_code = 2
+                        stats["errors"] += 1
 
         if self.files_destination_dir and status_code == 0 and not CONFIG.dry_run:
             CONFIG.update_last_sync(int(time.time()))
