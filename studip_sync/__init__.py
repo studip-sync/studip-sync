@@ -21,7 +21,13 @@ def get_config_file():
     from studip_sync.constants import CONFIG_FILENAME
 
     if ARGS.config:
-        return ARGS.config
+        config_path = os.path.expanduser(ARGS.config)
+        basename = os.path.basename(config_path).lower()
+
+        if basename.endswith(".json"):
+            return config_path
+
+        return os.path.join(config_path, CONFIG_FILENAME)
     else:
         return os.path.join(CONFIG_PATH, CONFIG_FILENAME)
 
