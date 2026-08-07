@@ -15,7 +15,8 @@ class GeneralLogin(LoginBase):
 
     @staticmethod
     def login(session, username, password, auth_type_data):
-        with session.session.get(session.url.login_page()) as response:
+        with session.get(session.url.login_page(), error_class=LoginError,
+                         action="Get login page") as response:
             if not response.ok:
                 raise LoginError("Cannot access Stud.IP login page")
             login_data = GeneralLogin.extract_login_data(response.text)
@@ -27,14 +28,16 @@ class GeneralLogin(LoginBase):
 
         login_params = {**login_params_auth, **login_data['params']}
 
-        with session.session.post(login_data['action'], data=login_params) as response:
+        with session.post(login_data['action'], error_class=LoginError, action="Post login data",
+                          data=login_params) as response:
             if not response.ok:
                 raise LoginError("Cannot post login data")
             elif "messagebox_error" in response.text:
                 raise LoginError("Wrong credentials, cannot login")
 
         # Test if logged in
-        with session.session.post(session.url.studip_main()) as response:
+        with session.post(session.url.studip_main(), error_class=LoginError,
+                          action="Get Stud.IP main page") as response:
             if not response.ok or "Veranstaltungen" not in response.text:
                 raise LoginError("Cannot access Stud.IP main page")
 

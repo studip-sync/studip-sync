@@ -88,12 +88,64 @@ To sync only the last semester and skip older courses, use the `--recent` flag. 
 ### Running studip-sync manually
 ```shell
 # Synchronizes files to /path/to/sync/dir
-# and uses a non-default location for the config file (here: ./config.json)
+# and uses a non-default location for the config directory (here: ./config.json)
 ./studip_sync.py -c ./ -d /path/to/sync/dir
+
+# You can also provide a config file path directly:
+./studip_sync.py -c ./custom-config.json -d /path/to/sync/dir
 
 # Reads all parameters from ~/.config/studip-sync/config.json
 ./studip_sync.py
 ```
+
+### Dry run
+To inspect what would be downloaded without writing files:
+```shell
+./studip_sync.py --dry-run
+```
+
+For detailed per-file diagnostics, add verbose logging:
+```shell
+./studip_sync.py -v
+```
+
+The default CLI output uses compact course lines (including a progress bar) and truncates
+long course names for readability.
+In interactive terminals you can control a running sync with:
+- `p` pause/resume
+- `q` abort gracefully
+- `h` show controls help
+
+### JSON report
+To write a machine-readable sync report:
+```shell
+./studip_sync.py --report-json /path/to/report.json
+```
+
+### Network tuning
+If your Stud.IP instance is slow or unstable, you can tune request behavior:
+```shell
+./studip_sync.py --http-timeout 60 --http-retries 5 --http-retry-backoff 1.0 --http-retry-status 429,500,502,503,504
+```
+
+The same values can also be placed in `config.json`:
+- `http_timeout`
+- `http_retries`
+- `http_retry_backoff_factor`
+- `http_retry_status_forcelist`
+
+### Course list export
+By default, studip-sync writes a `course_list.json` file to the config directory after loading
+courses. You can control this behavior using:
+```shell
+./studip_sync.py --save-course-list
+./studip_sync.py --no-save-course-list
+```
+
+The same behavior can be configured in `config.json` with:
+- `save_course_list`
+- `dry_run`
+- `report_json_path`
 
 ### Automation using a cron job
 Run `crontab -e` and add the following lines:
@@ -123,4 +175,3 @@ Finally, enter the task list id of your specified task list. For this you need t
 ## History
 * **2020 - today**: [@lenke182](https://github.com/lenke182) has taken over development and maintenance of the project.
 * **2015 - 2019**: Developed and maintained by [@woefe](https://github.com/woefe). During that time studip-sync was compatible with Stud.IP deployed at University of Passau.
-
