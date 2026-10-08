@@ -7,7 +7,8 @@ from studip_sync import get_config_file
 from studip_sync.arg_parser import ARGS
 from studip_sync.config_creator import ConfigCreator
 from studip_sync.constants import URL_BASEURL_DEFAULT, AUTHENTICATION_TYPE_DEFAULT, \
-    AUTHENTICATION_TYPE_DATA_DEFAULT, AUTHENTICATION_TYPES
+    AUTHENTICATION_TYPE_DATA_DEFAULT, AUTHENTICATION_TYPES, HTTP_REQUEST_TIMEOUT, \
+    HTTP_RETRY_TOTAL, HTTP_RETRY_BACKOFF_FACTOR, HTTP_RETRY_STATUS_FORCELIST
 from studip_sync.helpers import JSONConfig, ConfigError
 
 
@@ -18,7 +19,7 @@ class Config(JSONConfig):
 
         config_path = get_config_file()
 
-        self.config_dir = os.path.dirname(config_path)
+        self.config_dir = os.path.dirname(config_path) or "."
 
         self._username = None
         self._password = None
@@ -39,6 +40,22 @@ class Config(JSONConfig):
 
         if self.auth_type not in AUTHENTICATION_TYPES:
             raise ConfigError("Invalid auth type!")
+
+        if self.http_request_timeout <= 0:
+            raise ConfigError("http_timeout must be > 0")
+
+        if self.http_retry_total < 0:
+            raise ConfigError("http_retries must be >= 0")
+
+        if self.http_retry_backoff_factor < 0:
+            raise ConfigError("http_retry_backoff_factor must be >= 0")
+
+        for status_code in self.http_retry_status_forcelist:
+            if status_code < 100 or status_code > 599:
+                raise ConfigError("http_retry_status_forcelist contains invalid HTTP status code")
+
+        if self.args.save_course_list and self.args.no_save_course_list:
+            raise ConfigError("--save-course-list and --no-save-course-list are mutually exclusive")
 
     @property
     def last_sync(self):
@@ -84,6 +101,32 @@ class Config(JSONConfig):
             return None
 
         return user.get(prop)
+
+    @staticmethod
+    def _cast_numeric(value, cast_type, key_name):
+        try:
+            return cast_type(value)
+        except (TypeError, ValueError) as e:
+            raise ConfigError("{} has an invalid value".format(key_name)) from e
+
+    @staticmethod
+    def _parse_status_codes(value, key_name):
+        if isinstance(value, str):
+            if not value.strip():
+                return tuple()
+            raw_values = value.split(",")
+        elif isinstance(value, (list, tuple)):
+            raw_values = value
+        else:
+            raise ConfigError("{} has an invalid value".format(key_name))
+
+        parsed_values = []
+        for raw_value in raw_values:
+            status_code = Config._cast_numeric(raw_value, int, key_name)
+            if status_code not in parsed_values:
+                parsed_values.append(status_code)
+
+        return tuple(parsed_values)
 
     @property
     def username(self):
@@ -166,6 +209,91 @@ class Config(JSONConfig):
             return False
 
         return self.config.get("use_new_file_structure", False)
+
+    @property
+    def http_request_timeout(self):
+        if self.args.http_timeout is not None:
+            value = self.args.http_timeout
+        elif not self.config:
+            value = HTTP_REQUEST_TIMEOUT
+        else:
+            value = self.config.get("http_timeout", HTTP_REQUEST_TIMEOUT)
+
+        return self._cast_numeric(value, float, "http_timeout")
+
+    @property
+    def http_retry_total(self):
+        if self.args.http_retries is not None:
+            value = self.args.http_retries
+        elif not self.config:
+            value = HTTP_RETRY_TOTAL
+        else:
+            value = self.config.get("http_retries", HTTP_RETRY_TOTAL)
+
+        return self._cast_numeric(value, int, "http_retries")
+
+    @property
+    def http_retry_backoff_factor(self):
+        if self.args.http_retry_backoff is not None:
+            value = self.args.http_retry_backoff
+        elif not self.config:
+            value = HTTP_RETRY_BACKOFF_FACTOR
+        else:
+            value = self.config.get("http_retry_backoff_factor", HTTP_RETRY_BACKOFF_FACTOR)
+
+        return self._cast_numeric(value, float, "http_retry_backoff_factor")
+
+    @property
+    def http_retry_status_forcelist(self):
+        if self.args.http_retry_status is not None:
+            value = self.args.http_retry_status
+        elif not self.config:
+            value = HTTP_RETRY_STATUS_FORCELIST
+        else:
+            value = self.config.get("http_retry_status_forcelist", HTTP_RETRY_STATUS_FORCELIST)
+
+        return self._parse_status_codes(value, "http_retry_status_forcelist")
+
+    @property
+    def save_course_list(self):
+        if self.args.save_course_list:
+            return True
+
+        if self.args.no_save_course_list:
+            return False
+
+        if not self.config:
+            return True
+
+        return bool(self.config.get("save_course_list", True))
+
+    @property
+    def dry_run(self):
+        if self.args.dry_run:
+            return True
+
+        if not self.config:
+            return False
+
+        return bool(self.config.get("dry_run", False))
+
+    @property
+    def report_json_path(self):
+        if self.args.report_json is not None:
+            value = self.args.report_json
+        elif not self.config:
+            value = None
+        else:
+            value = self.config.get("report_json_path")
+
+        if value is None:
+            return None
+
+        value = str(value).strip()
+        if not value:
+            return None
+
+        return os.path.expanduser(value)
 
 
 try:
